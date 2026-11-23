@@ -2,23 +2,7 @@
   "processed_ids": [
     "lz_167423"
   ],
-  "failed_ids": {
-    "lz_167534": {
-      "title": "秦岭青铜诡事录2",
-      "reason": "Tải tập #1 thất bại từ: https://v.lzcdn27.com/share/f65e4b73bc7df2837d715bf283f6afa7",
-      "failed_at": "2026-11-23T08:54:30.448562"
-    },
-    "lz_166953": {
-      "title": "罪恶拼图",
-      "reason": "Tải tập #1 thất bại từ: https://v.lzcdn27.com/share/3968871ce7673ed3621a799f78f3e792",
-      "failed_at": "2026-11-23T08:54:33.894468"
-    },
-    "ff_100439": {
-      "title": "霓裳尽欢",
-      "reason": "Tải tập #1 thất bại từ: https://super.ffzy-online6.com/20261117/45801_b858ea55/index.m3u8",
-      "failed_at": "2026-11-23T08:54:39.490300"
-    }
-  },
+  "failed_ids": {},
   "pending_review": {
     "lz_167423": {
       "title": "Tiểu Thư Thật Đã Rời Núi",
@@ -29,5 +13,5 @@
     }
   },
   "completed": {},
-  "last_updated": "2026-11-23T08:54:39.490330"
+  "last_updated": "2026-11-23T08:58:00.000000"
 }

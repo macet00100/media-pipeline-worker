@@ -66,7 +66,6 @@ class StateManager:
     def get_ignored_ids(cls) -> set:
         data = cls._load()
         return (set(data.get("processed_ids", [])) |
-                set(data.get("failed_ids", {}).keys()) |
                 set(data.get("pending_review", {}).keys()) |
                 set(data.get("completed", {}).keys()))
 
