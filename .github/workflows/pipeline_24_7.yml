@@ -109,6 +109,9 @@ jobs:
           MAX_VIDEOS_PER_RUN: ${{ inputs.max_videos || '1' }}
           PREFERRED_SOURCE: ${{ inputs.force_source || 'lz' }}
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
+          GOOGLE_GENAI_API_VERSION: "v1beta"
           LZ_API_URL: ${{ secrets.LZ_API_URL }}
           FF_API_URL: ${{ secrets.FF_API_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -122,19 +125,23 @@ jobs:
           python main.py
 
       - name: ☁️ Xuất Gói Xét Duyệt sang Cloud Storage riêng tư (Rclone)
-        if: always() && env.RCLONE_CONFIG_BASE64 != ''
+        if: always()
         env:
           RCLONE_CONFIG_BASE64: ${{ secrets.RCLONE_CONFIG_BASE64 }}
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE || 'gdrive:CoolMeoPhim/packages' }}
           RUN_NUMBER: ${{ github.run_number }}
         run: |
+          if [ -z "$RCLONE_CONFIG_BASE64" ]; then
+            echo "⚠️ Chưa cấu hình secret RCLONE_CONFIG_BASE64, bỏ qua bước sync."
+            exit 0
+          fi
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_BASE64" | base64 -d > ~/.config/rclone/rclone.conf
           echo "📤 Đang xuất Gói Xét Duyệt sang Cloud Storage riêng tư ($RCLONE_REMOTE/$RUN_NUMBER)..."
           rclone copy output/ "${RCLONE_REMOTE}/${RUN_NUMBER}/" --config ~/.config/rclone/rclone.conf || echo "⚠️ Cảnh báo: Rclone sync không thành công."
 
       - name: 📢 Gửi báo cáo Gói Xét Duyệt qua Telegram
-        if: always() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        if: always() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

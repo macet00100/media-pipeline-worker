@@ -716,6 +716,9 @@ def main():
         print(f"🖼️ Thumbnail ngang      : {result['thumbnail_horizontal']}")
         print(f"⏰ Lịch Giờ Vàng         : {result['schedule_info'].get('golden_slot_vn')}")
         print("=" * 70)
+    else:
+        print("\n❌ SẢN XUẤT THẤT BẠI!")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

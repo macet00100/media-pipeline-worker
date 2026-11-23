@@ -37,7 +37,14 @@ class GeminiClient:
         last_error = None
         for key_idx, key in enumerate(api_keys):
             try:
-                client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=60000))
+                client = genai.Client(
+                    api_key=key,
+                    http_options=types.HttpOptions(
+                        api_version="v1beta",
+                        headers={"x-goog-api-key": key},
+                        timeout=60000
+                    )
+                )
                 # Dò danh sách model khả dụng từ Google AI Studio
                 candidates = [
                     "gemini-3.1-flash-lite",
