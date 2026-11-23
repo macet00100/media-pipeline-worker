@@ -106,29 +106,6 @@ jobs:
         run: |
           python tests/test_end_to_end_mock.py
 
-      - name: 🌐 Kiểm tra & Khởi tạo Kết nối CDN (Direct vs Tor Fallback)
-        run: |
-          echo "=== 1. Kiểm tra kết nối TRỰC TIẾP tới Liangzi CDN ==="
-          DIRECT_LZ=$(curl -s -o /dev/null -w "%{http_code}" -m 8 -A "Mozilla/5.0" "https://v.lzcdn27.com/20261103/21183_19a20c74/index.m3u8" || true)
-          echo "HTTP Code Liangzi: $DIRECT_LZ"
-
-          echo "=== 2. Kiểm tra kết nối TRỰC TIẾP tới Phi Phàm CDN ==="
-          DIRECT_FF=$(curl -s -o /dev/null -w "%{http_code}" -m 8 -A "Mozilla/5.0" "https://vip.ffzy-play9.com/20260818/47544_6fb7c530/index.m3u8" || true)
-          echo "HTTP Code Phi Phàm: $DIRECT_FF"
-
-          if [ "$DIRECT_LZ" = "200" ] || [ "$DIRECT_FF" = "200" ]; then
-            echo "✅ Runner kết nối trực tiếp thành công (HTTP 200). Không cần qua proxy."
-            echo "USE_PROXY=false" >> $GITHUB_ENV
-          else
-            echo "⚠️ Runner bị hạn chế kết nối trực tiếp (HTTP $DIRECT_LZ / $DIRECT_FF). Khởi động Tor proxy..."
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq tor
-            echo "HTTPTunnelPort 9080" | sudo tee -a /etc/tor/torrc
-            sudo systemctl restart tor
-            sleep 4
-            echo "USE_PROXY=true" >> $GITHUB_ENV
-          fi
-
       - name: 🚀 Khởi chạy Pipeline Sản Xuất Video (Khóa Auto-Publish xuất Gói Xét Duyệt)
         env:
           PYTHONUNBUFFERED: "1"
@@ -153,21 +130,6 @@ jobs:
           export GEMINI_API_KEYS=$(echo -n "$GEMINI_API_KEYS" | tr -d '\r\n[:space:]')
           export GEMINI_API_KEY=$(echo -n "$GEMINI_API_KEY" | tr -d '\r\n[:space:]')
           export GOOGLE_API_KEY=$(echo -n "$GOOGLE_API_KEY" | tr -d '\r\n[:space:]')
-          
-          if [ "$USE_PROXY" = "true" ]; then
-            echo "🌐 Áp dụng Tor HTTP Tunnel qua cổng 9080..."
-            export http_proxy="http://127.0.0.1:9080"
-            export https_proxy="http://127.0.0.1:9080"
-            export HTTP_PROXY="http://127.0.0.1:9080"
-            export HTTPS_PROXY="http://127.0.0.1:9080"
-            export all_proxy="http://127.0.0.1:9080"
-            export ALL_PROXY="http://127.0.0.1:9080"
-          else
-            echo "🚀 Sử dụng đường truyền mạng trực tiếp tốc độ cao của GitHub Actions Runner!"
-          fi
-          # Gemini API đi trực tiếp đường truyền Google tốc độ cao không qua proxy
-          export NO_PROXY="localhost,127.0.0.1,generativelanguage.googleapis.com,oauth2.googleapis.com"
-          export no_proxy="localhost,127.0.0.1,generativelanguage.googleapis.com,oauth2.googleapis.com"
           
           CMD="python main.py"
           if [ -n "${{ inputs.max_episodes }}" ]; then
