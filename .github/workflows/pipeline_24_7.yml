@@ -95,7 +95,27 @@ jobs:
       - name: ⚙️ Cài đặt FFmpeg, Rclone & Font chữ tiếng Việt
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg fonts-liberation fonts-dejavu-core rclone
+          sudo apt-get install -y -qq ffmpeg fonts-liberation fonts-dejavu-core rclone tor
+
+      - name: 🧅 Thiết lập Tor Proxy Châu Á (Vượt chặn Geo-block Datacenter)
+        run: |
+          sudo tee /etc/tor/torrc << 'EOF'
+          HTTPTunnelPort 9080
+          SocksPort 9050
+          ExitNodes {hk},{tw},{sg},{jp}
+          StrictNodes 0
+          EOF
+          sudo systemctl restart tor
+          echo "Đang đợi Tor khởi động..."
+          for i in {1..35}; do
+            if curl -s -x http://127.0.0.1:9080 -m 4 https://check.torproject.org/api/ip | grep -q '"IsTor":true'; then
+              echo "✅ Tor Proxy đã sẵn sàng!"
+              break
+            fi
+            sleep 1
+          done
+          TOR_IP=$(curl -s -x http://127.0.0.1:9080 -m 5 https://api.ipify.org || echo "Unknown")
+          echo "Tor Public IP: $TOR_IP"
 
       - name: 📦 Cài đặt thư viện Python
         run: |
@@ -112,6 +132,12 @@ jobs:
           AUTO_PUBLISH: "false"  # KHÓA CỨNG AN TOÀN: Luôn xuất Gói Xét Duyệt 3 phần
           MAX_VIDEOS_PER_RUN: ${{ inputs.max_videos || '1' }}
           PREFERRED_SOURCE: ${{ inputs.force_source || 'lz' }}
+          http_proxy: "http://127.0.0.1:9080"
+          https_proxy: "http://127.0.0.1:9080"
+          HTTP_PROXY: "http://127.0.0.1:9080"
+          HTTPS_PROXY: "http://127.0.0.1:9080"
+          no_proxy: "localhost,127.0.0.1,googleapis.com,generativelanguage.googleapis.com,telegram.org,api.telegram.org,github.com"
+          NO_PROXY: "localhost,127.0.0.1,googleapis.com,generativelanguage.googleapis.com,telegram.org,api.telegram.org,github.com"
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
@@ -132,19 +158,17 @@ jobs:
           export GOOGLE_API_KEY=$(echo -n "$GOOGLE_API_KEY" | tr -d '\r\n[:space:]')
           
           echo "=== 🌐 KIỂM TRA MẠNG RUNNER VÀ KẾT NỐI TỚI CÁC CDN ==="
-          echo "Runner Public IPv4: $(curl -4 -s -m 5 https://api.ipify.org || echo 'N/A')"
+          echo "Runner Direct Public IPv4: $(curl -4 --noproxy '*' -s -m 5 https://api.ipify.org || echo 'N/A')"
+          echo "Tor Proxy Public IP: $(curl -s -m 8 https://api.ipify.org || echo 'N/A')"
           
-          echo "--- Test 1: Liangzi v.lzcdn27.com ---"
-          curl -I -s -m 5 -A "Mozilla/5.0" "https://v.lzcdn27.com/20261021/19753_d0f36985/index.m3u8" | head -n 5 || true
+          echo "--- Test 1 (Direct): Liangzi v.lzcdn27.com ---"
+          curl --noproxy '*' -I -s -m 5 -A "Mozilla/5.0" "https://v.lzcdn27.com/20261021/19753_d0f36985/index.m3u8" | head -n 5 || true
 
-          echo "--- Test 2: Liangzi v.lfthirtytwo.com ---"
-          curl -I -s -m 5 -A "Mozilla/5.0" "https://v.lfthirtytwo.com/20261023/11462_6459a9f3/index.m3u8" | head -n 5 || true
+          echo "--- Test 1 (Qua Tor Proxy): Liangzi v.lzcdn27.com ---"
+          curl -I -s -m 8 -A "Mozilla/5.0" "https://v.lzcdn27.com/20261021/19753_d0f36985/index.m3u8" | head -n 5 || true
 
-          echo "--- Test 3: Phi Phàm vip.ffzy-play9.com (Referer ffzy1.tv) ---"
-          curl -I -s -m 5 -A "Mozilla/5.0" -H "Referer: https://ffzy1.tv/" "https://vip.ffzy-play9.com/20260818/47454_dedf106c/index.m3u8" | head -n 5 || true
-
-          echo "--- Test 4: Phi Phàm vod.ffzy-plays50.com (Referer ffzy1.tv) ---"
-          curl -I -s -m 5 -A "Mozilla/5.0" -H "Referer: https://ffzy1.tv/" "https://vod.ffzy-plays50.com/20260829/71263_0fa82e56/index.m3u8" | head -n 5 || true
+          echo "--- Test 3 (Qua Tor Proxy): Phi Phàm vip.ffzy-play9.com (Referer ffzy1.tv) ---"
+          curl -I -s -m 8 -A "Mozilla/5.0" -H "Referer: https://ffzy1.tv/" "https://vip.ffzy-play9.com/20260818/47454_dedf106c/index.m3u8" | head -n 5 || true
           echo "======================================================="
 
           CMD="python main.py"
