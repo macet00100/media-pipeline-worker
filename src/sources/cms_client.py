@@ -142,7 +142,7 @@ class CMSClient:
 
     @classmethod
     def _extract_m3u8_groups(cls, play_url: str) -> List[str]:
-        """Trích xuất danh sách link m3u8 chuẩn từ chuỗi vod_play_url."""
+        """Trích xuất danh sách link phát chuẩn (m3u8 hoặc share có ký danh) từ chuỗi vod_play_url."""
         if not play_url:
             return []
 
@@ -150,10 +150,10 @@ class CMSClient:
         for grp in play_url.split("$$$"):
             urls = []
             for ep in grp.split("#"):
-                if ".m3u8" in ep.lower():
+                if ".m3u8" in ep.lower() or "/share/" in ep.lower():
                     for part in ep.split("$"):
                         part = part.strip()
-                        if part.startswith("http") and ".m3u8" in part.lower():
+                        if part.startswith("http") and (".m3u8" in part.lower() or "/share/" in part.lower()):
                             urls.append(part)
                             break
             if urls:
@@ -162,7 +162,12 @@ class CMSClient:
         if not groups:
             return []
 
-        # Ưu tiên nhóm direct m3u8 (chứa index.m3u8 / 202 / mixed)
+        # Ưu tiên nhóm share URL vì có sign token chống 404 trên CDN
+        for g in groups:
+            if any("/share/" in u for u in g):
+                return g
+
+        # Tiếp theo ưu tiên nhóm direct m3u8
         for g in groups:
             if any("/202" in u or "index.m3u8" in u or "mixed" in u for u in g):
                 return g

@@ -16,7 +16,25 @@ class Downloader:
 
     @classmethod
     def resolve_stream_url(cls, m3u8_url: str) -> str:
-        """Phân giải master playlist để lấy direct stream URL."""
+        """Phân giải master playlist hoặc link share để lấy direct stream URL."""
+        # 1. Nếu là link share (Liangzi), tải trang share để lấy link M3U8 có chữ ký (?sign=...)
+        if "/share/" in m3u8_url:
+            try:
+                req = urllib.request.Request(
+                    m3u8_url,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"}
+                )
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    html = resp.read().decode("utf-8", errors="ignore")
+                    m = re.search(r'var\s+main\s*=\s*["\']([^"\']+)["\']', html)
+                    if m:
+                        main_path = m.group(1)
+                        parsed = urllib.parse.urlparse(m3u8_url)
+                        m3u8_url = f"{parsed.scheme}://{parsed.netloc}{main_path}"
+                        print(f"[Downloader] Phân giải thành công link có chữ ký: {m3u8_url}")
+            except Exception as e:
+                print(f"[Downloader] Lỗi phân giải share page {m3u8_url}: {e}")
+
         if "/lzv" in m3u8_url and m3u8_url.endswith("/index.m3u8"):
             return m3u8_url.replace("/index.m3u8", "/2000k/hls/index.m3u8")
 
@@ -25,9 +43,10 @@ class Downloader:
                 m3u8_url,
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"}
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=12) as resp:
                 text = resp.read().decode("utf-8", errors="ignore")
                 base = m3u8_url.rsplit("/", 1)[0]
+                query = urllib.parse.urlparse(m3u8_url).query
                 for line in text.splitlines():
                     line = line.strip()
                     if line and not line.startswith("#"):
@@ -35,11 +54,13 @@ class Downloader:
                             return line
                         elif line.startswith("/"):
                             parsed = urllib.parse.urlparse(m3u8_url)
-                            return f"{parsed.scheme}://{parsed.netloc}{line}"
+                            res_url = f"{parsed.scheme}://{parsed.netloc}{line}"
+                            return f"{res_url}?{query}" if query and "?" not in res_url else res_url
                         else:
-                            return f"{base}/{line}"
-        except Exception:
-            pass
+                            res_url = f"{base}/{line}"
+                            return f"{res_url}?{query}" if query and "?" not in res_url else res_url
+        except Exception as e:
+            print(f"[Downloader] Lỗi phân giải master playlist: {e}")
         return m3u8_url
 
     @classmethod
@@ -166,9 +187,8 @@ class Downloader:
 
         cmd = ["ffmpeg", "-y"]
         if stream_url.startswith("http://") or stream_url.startswith("https://"):
-            cmd.extend(["-headers", headers_str])
+            cmd.extend(["-headers", headers_str, "-rw_timeout", "15000000"])
         cmd.extend([
-            "-timeout", "15000000",
             "-allowed_extensions", "ALL",
             "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
             "-i", stream_url,
