@@ -78,6 +78,7 @@ class Downloader:
                 content = resp.read().decode("utf-8", errors="ignore")
 
             base_url = stream_url.rsplit("/", 1)[0]
+            query = urllib.parse.urlparse(stream_url).query
             lines = content.splitlines()
 
             sanitized_lines = []
@@ -125,6 +126,8 @@ class Downloader:
                                 seg_url = f"{parsed.scheme}://{parsed.netloc}{seg_url}"
                             else:
                                 seg_url = f"{base_url}/{seg_url}"
+                        if query and "?" not in seg_url:
+                            seg_url = f"{seg_url}?{query}"
 
                         if in_discontinuity_block:
                             discontinuity_segments.append((dur, seg_url))
@@ -178,16 +181,40 @@ class Downloader:
     def download_segment_to_mp4(cls, stream_url: str, output_path: str, max_seconds: int = 7200) -> bool:
         """Tải một luồng stream m3u8 thành file mp4 bằng FFmpeg (-c copy)."""
         t0 = time.time()
-        parsed = urllib.parse.urlparse(stream_url)
-        referer = f"{parsed.scheme}://{parsed.netloc}/" if parsed.netloc else ""
-        headers_str = (
-            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0 Safari/537.36\r\n"
-            f"Referer: {referer}\r\n"
-        )
+        
+        # Luôn cung cấp User-Agent trình duyệt thật để tránh bị CDN chặn
+        headers_list = [
+            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        ]
+        if stream_url.startswith("http://") or stream_url.startswith("https://"):
+            parsed = urllib.parse.urlparse(stream_url)
+            if parsed.netloc:
+                headers_list.append(f"Referer: {parsed.scheme}://{parsed.netloc}/")
+        elif os.path.exists(stream_url):
+            try:
+                with open(stream_url, "r", encoding="utf-8", errors="ignore") as f:
+                    for l in f:
+                        l = l.strip()
+                        if l.startswith("http://") or l.startswith("https://"):
+                            parsed = urllib.parse.urlparse(l)
+                            if parsed.netloc:
+                                headers_list.append(f"Referer: {parsed.scheme}://{parsed.netloc}/")
+                            break
+            except Exception:
+                pass
+
+        headers_str = "\r\n".join(headers_list) + "\r\n"
 
         cmd = ["ffmpeg", "-y"]
+
+        # Nếu có HTTP proxy trong môi trường, chỉ định trực tiếp cho FFmpeg
+        proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+        if proxy and proxy.startswith("http://"):
+            cmd.extend(["-http_proxy", proxy])
+
+        cmd.extend(["-headers", headers_str])
         if stream_url.startswith("http://") or stream_url.startswith("https://"):
-            cmd.extend(["-headers", headers_str, "-rw_timeout", "15000000"])
+            cmd.extend(["-rw_timeout", "15000000"])
         cmd.extend([
             "-allowed_extensions", "ALL",
             "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
