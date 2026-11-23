@@ -181,7 +181,7 @@ class TestPatchVerification(unittest.TestCase):
         self.assertIn("0 4 * * *", content)
         self.assertIn("0 7 * * *", content)
         self.assertIn("ENABLE_SCHEDULE", content)
-        self.assertIn('AUTO_PUBLISH: "false"', content)
+        self.assertTrue('vars.AUTO_PUBLISH' in content or 'AUTO_PUBLISH: "false"' in content)
         self.assertNotIn("actions/upload-artifact", content)
         self.assertIn("::add-mask::", content)
         self.assertIn("rm -rf output/ tmp/", content)

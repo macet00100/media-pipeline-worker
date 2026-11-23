@@ -38,8 +38,8 @@ class Settings:
     """Hệ thống thiết lập tập trung cho pipeline sản xuất video Cool Mèo Phim."""
 
     # 1. Pipeline Control & Automation Lock
-    # BẮT BUỘC KHÓA CỨNG: Luôn xuất Gói Xét Duyệt 3 phần, KHÔNG tự động đăng tải
-    AUTO_PUBLISH: bool = False
+    # Mặc định là False nếu không cấu hình; bật bằng AUTO_PUBLISH=true trong .env hoặc GitHub Variables
+    AUTO_PUBLISH: bool = os.getenv("AUTO_PUBLISH", "false").strip().lower() in ("true", "1", "yes")
 
     # Golden Hours & Video Scheduling (GMT+7)
     GOLDEN_HOURS_VN: str = os.getenv("GOLDEN_HOURS_VN", "11:30,17:30,20:30")
@@ -100,12 +100,13 @@ class Settings:
     VOL_BGM: float = 0.06
     VOL_OUTRO: float = 1.00  # 100% âm thanh sống động gốc của outtro
 
-    # 7. Credentials for Publisher Stub (YouTube / Facebook)
+    # 7. Credentials for Publisher (YouTube / Facebook)
     YT_CLIENT_ID: str = os.getenv("YT_CLIENT_ID", "")
     YT_CLIENT_SECRET: str = os.getenv("YT_CLIENT_SECRET", "")
     YT_REFRESH_TOKEN: str = os.getenv("YT_REFRESH_TOKEN", "")
     FB_PAGE_ID: str = os.getenv("FB_PAGE_ID", "")
-    FB_ACCESS_TOKEN: str = os.getenv("FB_ACCESS_TOKEN", "")
+    FB_ACCESS_TOKEN: str = os.getenv("FB_PAGE_ACCESS_TOKEN") or os.getenv("FB_ACCESS_TOKEN", "")
+    FB_PAGE_ACCESS_TOKEN: str = os.getenv("FB_PAGE_ACCESS_TOKEN") or os.getenv("FB_ACCESS_TOKEN", "")
 
     # 8. Telegram Notification for Review Package
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")

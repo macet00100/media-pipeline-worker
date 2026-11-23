@@ -219,6 +219,14 @@ class VideoScheduler:
         next_slot = self.get_next_available_slot(from_time=from_time)
         slot_key = next_slot["slot_key"]
 
+        # Lưu đường dẫn tương đối an toàn cho public git tracking
+        safe_pkg_dir = ""
+        if package_dir:
+            try:
+                safe_pkg_dir = str(Path(package_dir).resolve().relative_to(getattr(Settings, "BASE_DIR", Path("."))))
+            except Exception:
+                safe_pkg_dir = str(package_dir)
+
         allocation_record = {
             "slot_key": slot_key,
             "slot_vn": next_slot["slot_vn"],
@@ -228,7 +236,7 @@ class VideoScheduler:
             "date": next_slot["date"],
             "video_id": str(video_id),
             "title": str(title),
-            "package_dir": str(package_dir) if package_dir else "",
+            "package_dir": safe_pkg_dir,
             "allocated_at": now_vn.isoformat(),
             "buffer_hours": self.buffer_hours,
             "status": "scheduled",

@@ -76,6 +76,8 @@ jobs:
                      "${{ secrets.TELEGRAM_BOT_TOKEN }}" \
                      "${{ secrets.TELEGRAM_CHAT_ID }}" \
                      "${{ secrets.FB_ACCESS_TOKEN }}" \
+                     "${{ secrets.FB_PAGE_ACCESS_TOKEN }}" \
+                     "${{ secrets.YT_CLIENT_ID }}" \
                      "${{ secrets.YT_CLIENT_SECRET }}" \
                      "${{ secrets.YT_REFRESH_TOKEN }}" \
                      "${{ secrets.RCLONE_CONFIG_BASE64 }}"; do
@@ -133,10 +135,11 @@ jobs:
         run: |
           python tests/test_end_to_end_mock.py
 
-      - name: 🚀 Khởi chạy Pipeline Sản Xuất Video (Khóa Auto-Publish xuất Gói Xét Duyệt)
+      - name: 🚀 Khởi chạy Pipeline Sản Xuất Video (Quản lý qua Cổng QA Gate & Biến AUTO_PUBLISH)
         env:
           PYTHONUNBUFFERED: "1"
-          AUTO_PUBLISH: "false"  # KHÓA CỨNG AN TOÀN: Luôn xuất Gói Xét Duyệt 3 phần
+          AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH || 'false' }}
+          BACKUP_TO_GDRIVE: ${{ vars.BACKUP_TO_GDRIVE || 'true' }}
           MAX_VIDEOS_PER_RUN: ${{ inputs.max_videos || '1' }}
           PREFERRED_SOURCE: ${{ inputs.force_source || 'lz' }}
           http_proxy: "http://127.0.0.1:9080"
@@ -154,7 +157,8 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
-          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+          FB_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN || secrets.FB_ACCESS_TOKEN }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN || secrets.FB_ACCESS_TOKEN }}
         run: |
           # Làm sạch 100% khoảng trắng và ký tự xuống dòng khỏi các biến môi trường
           export GEMINI_API_KEYS=$(echo -n "$GEMINI_API_KEYS" | tr -d '\r\n[:space:]')
@@ -186,7 +190,7 @@ jobs:
           eval "$CMD"
 
       - name: ☁️ Xuất Gói Xét Duyệt sang Cloud Storage riêng tư (Rclone)
-        if: always()
+        if: always() && (vars.BACKUP_TO_GDRIVE != 'false')
         env:
           RCLONE_CONFIG_BASE64: ${{ secrets.RCLONE_CONFIG_BASE64 }}
           RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE || 'gdrive:CoolMeoPhim/packages' }}
@@ -201,7 +205,7 @@ jobs:
           echo "📤 Đang xuất Gói Xét Duyệt sang Cloud Storage riêng tư ($RCLONE_REMOTE/$RUN_NUMBER)..."
           rclone copy output/ "${RCLONE_REMOTE}/${RUN_NUMBER}/" --config ~/.config/rclone/rclone.conf || echo "⚠️ Cảnh báo: Rclone sync không thành công."
 
-      - name: 📢 Gửi báo cáo Gói Xét Duyệt qua Telegram
+      - name: 📢 Gửi báo cáo Xuất Bản / Xét Duyệt qua Telegram
         if: always()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -213,27 +217,78 @@ jobs:
             exit 0
           fi
           python -c "
-          import os, glob, requests
+          import os, glob, json, requests
           token = os.environ.get('TELEGRAM_BOT_TOKEN')
           chat_id = os.environ.get('TELEGRAM_CHAT_ID')
           run_num = os.environ.get('RUN_NUMBER', '0')
 
+          publish_results = glob.glob('output/**/publish_result.json', recursive=True)
           summaries = glob.glob('output/**/REVIEW_SUMMARY.md', recursive=True)
-          if summaries:
-              with open(summaries[0], 'r', encoding='utf-8') as f:
-                  content = f.read()[:3200]
-              msg = f'🎉 *[Cool Mèo Phim] Gói Xét Duyệt #{run_num} Sẵn Sàng!*\n\n{content}\n\n🔒 *Bảo mật: Gói xét duyệt đã được chuyển đến Cloud Storage riêng tư qua Rclone.*'
+          thumbs = (glob.glob('output/**/thumbnail_horizontal.jpg', recursive=True) or
+                    glob.glob('output/**/thumbnail.jpg', recursive=True))
+
+          thumb_path = thumbs[0] if thumbs else None
+          msg = ''
+
+          if publish_results:
+              try:
+                  with open(publish_results[0], 'r', encoding='utf-8') as f:
+                      pr = json.load(f)
+                  title = pr.get('title', 'Phim Mới')
+                  slot_vn = pr.get('schedule_slot', {}).get('slot_vn', 'N/A')
+                  yt = pr.get('youtube', {})
+                  fb = pr.get('facebook', {})
+
+                  yt_line = f'✅ [Xem video]({yt.get(\"video_url\")})' if yt.get('success') else (f'❌ Lỗi: {yt.get(\"error\")}' if yt.get('error') else 'Chưa cấu hình')
+                  fb_line = f'✅ [Xem video]({fb.get(\"video_url\")})' if fb.get('success') else (f'❌ Lỗi: {fb.get(\"error\")}' if fb.get('error') else 'Chưa cấu hình')
+
+                  msg = (
+                      f'🚀 *[Cool Mèo Phim] TỰ ĐỘNG XUẤT BẢN #{run_num}*\n\n'
+                      f'🎬 *Tác phẩm:* {title}\n'
+                      f'⏰ *Giờ Vàng VN:* \`{slot_vn}\`\n\n'
+                      f'🔴 *YouTube (Private Scheduled):*\n{yt_line}\n\n'
+                      f'🔵 *Facebook Fanpage (Scheduled):*\n{fb_line}\n\n'
+                      f'🔒 *Bảo mật: Đã vượt qua 100% Cổng QA Gate và đồng bộ cloud storage.*'
+                  )
+              except Exception as pe:
+                  msg = f'🚀 *[Cool Mèo Phim]* Job #{run_num} đã xuất bản: {pe}'
+          elif summaries:
+              try:
+                  with open(summaries[0], 'r', encoding='utf-8') as f:
+                      content = f.read()[:3200]
+                  msg = f'🎉 *[Cool Mèo Phim] Gói Xét Duyệt #{run_num} Sẵn Sàng!*\n\n{content}\n\n🔒 *Bảo mật: Gói xét duyệt đã được chuyển đến Cloud Storage riêng tư qua Rclone.*'
+              except Exception as se:
+                  msg = f'🎉 *[Cool Mèo Phim]* Gói xét duyệt #{run_num} hoàn thành: {se}'
           else:
               msg = f'ℹ️ *[Cool Mèo Phim]* Job #{run_num} đã kết thúc.'
 
           try:
-              requests.post(f'https://api.telegram.org/bot{token}/sendMessage', json={'chat_id': chat_id, 'text': msg, 'parse_mode': 'Markdown'}, timeout=15)
-              print('✅ Đã gửi báo cáo Telegram thành công!')
+              if thumb_path and os.path.exists(thumb_path):
+                  with open(thumb_path, 'rb') as photo:
+                      r = requests.post(
+                          f'https://api.telegram.org/bot{token}/sendPhoto',
+                          data={'chat_id': chat_id, 'caption': msg[:1024], 'parse_mode': 'Markdown'},
+                          files={'photo': photo},
+                          timeout=30
+                      )
+                  if len(msg) > 1024:
+                      requests.post(
+                          f'https://api.telegram.org/bot{token}/sendMessage',
+                          json={'chat_id': chat_id, 'text': msg[1024:], 'parse_mode': 'Markdown'},
+                          timeout=20
+                      )
+              else:
+                  requests.post(
+                      f'https://api.telegram.org/bot{token}/sendMessage',
+                      json={'chat_id': chat_id, 'text': msg[:4000], 'parse_mode': 'Markdown'},
+                      timeout=20
+                  )
+              print('✅ Đã gửi thông báo Telegram thành công!')
           except Exception as e:
               print(f'⚠️ Gửi Telegram thất bại: {e}')
           " || true
 
-      - name: 💾 Đồng bộ cơ sở dữ liệu lịch sử (Chỉ commit processed_db.json & production_queue.json)
+      - name: 💾 Đồng bộ cơ sở dữ liệu lịch sử (Chỉ commit processed_db.json, production_queue.json & schedule_calendar.json)
         if: always()
         run: |
           git config --global user.name "CoolMeoBot"

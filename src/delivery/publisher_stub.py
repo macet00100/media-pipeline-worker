@@ -218,44 +218,53 @@ class PublisherStub:
         custom_scheduler: Optional[VideoScheduler] = None
     ) -> Dict[str, Any]:
         """
-        Khóa cứng không cho phép tự động upload khi chưa được duyệt.
-        Ghi toàn bộ thông tin giờ vàng và payload hẹn giờ vào schedule_plan.json.
+        Giao diện publish_video:
+        - Khi Settings.AUTO_PUBLISH == True: Ủy quyền cho Publisher thực thi upload thật.
+        - Khi Settings.AUTO_PUBLISH == False: Lập kế hoạch giờ vàng và ghi vào schedule_plan.json.
         """
-        # KHÓA CỨNG: Tuyệt đối không gọi upload API
-        if not Settings.AUTO_PUBLISH or not cls.AUTO_PUBLISH:
-            plan_path, plan_data = cls.generate_schedule_plan(
+        if getattr(Settings, "AUTO_PUBLISH", False):
+            from src.delivery.publisher import Publisher
+            return Publisher.publish_video(
                 video_path=video_path,
                 title=title,
                 description=description,
-                package_dir=package_dir,
                 thumbnail_path=thumbnail_path,
                 tags=tags,
+                package_dir=package_dir,
                 video_id=video_id,
                 from_time=from_time,
                 custom_scheduler=custom_scheduler
             )
 
-            print(
-                "[SAFETY LOCK] AUTO_PUBLISH=false KHÓA CỨNG: Tuyệt đối không gọi upload API.\n"
-                f"[PublisherStub] Đã lập kế hoạch giờ vàng và ghi vào: {plan_path}"
-            )
-
-            return {
-                "published": False,
-                "locked": True,
-                "safety_lock": "HARDLOCKED_AUTO_PUBLISH_FALSE",
-                "message": (
-                    "[SAFETY LOCK] Tính năng đăng tải tự động KHÓA CỨNG (AUTO_PUBLISH=false). "
-                    "Chỉ xuất Gói Xét Duyệt kèm schedule_plan.json."
-                ),
-                "schedule_plan_path": plan_path,
-                "schedule_plan": plan_data,
-                "golden_hour_vn": plan_data["schedule_timing"]["slot_vn_iso"],
-                "publish_at_utc": plan_data["schedule_timing"]["publish_at_utc_iso"],
-                "scheduled_publish_timestamp": plan_data["schedule_timing"]["scheduled_publish_timestamp"]
-            }
-
-        # KHỐI PHÒNG THỦ: Trong mọi tình huống bình thường, luồng bên dưới không bao giờ được kích hoạt
-        raise PermissionError(
-            "[SAFETY LOCK VIOLATION] AUTO_PUBLISH bị khóa cứng ở tầng kiến trúc. Không được phép gọi API upload!"
+        # Mặc định khi AUTO_PUBLISH=false: Không gọi upload API, xuất schedule_plan.json
+        plan_path, plan_data = cls.generate_schedule_plan(
+            video_path=video_path,
+            title=title,
+            description=description,
+            package_dir=package_dir,
+            thumbnail_path=thumbnail_path,
+            tags=tags,
+            video_id=video_id,
+            from_time=from_time,
+            custom_scheduler=custom_scheduler
         )
+
+        print(
+            "[SAFETY LOCK] AUTO_PUBLISH=false: Chỉ lập kế hoạch và xuất Gói Xét Duyệt.\n"
+            f"[PublisherStub] Đã lập kế hoạch giờ vàng và ghi vào: {plan_path}"
+        )
+
+        return {
+            "published": False,
+            "locked": True,
+            "safety_lock": "HARDLOCKED_AUTO_PUBLISH_FALSE",
+            "message": (
+                "[SAFETY LOCK] Tính năng đăng tải tự động chưa kích hoạt (AUTO_PUBLISH=false). "
+                "Chỉ xuất Gói Xét Duyệt kèm schedule_plan.json."
+            ),
+            "schedule_plan_path": plan_path,
+            "schedule_plan": plan_data,
+            "golden_hour_vn": plan_data["schedule_timing"]["slot_vn_iso"],
+            "publish_at_utc": plan_data["schedule_timing"]["publish_at_utc_iso"],
+            "scheduled_publish_timestamp": plan_data["schedule_timing"]["scheduled_publish_timestamp"]
+        }

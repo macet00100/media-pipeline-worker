@@ -163,6 +163,21 @@ class StateManager:
         print(f"[STATE] Đã chuyển phim [{info.get('title', movie_id)}] vào danh sách Chờ Xét Duyệt.")
 
     @classmethod
+    def mark_completed(cls, movie_id: str, publish_info: Dict[str, Any]):
+        data = cls._load()
+        if movie_id not in data["processed_ids"]:
+            data["processed_ids"].append(movie_id)
+        data["completed"][movie_id] = {
+            **publish_info,
+            "completed_at": datetime.now().isoformat()
+        }
+        if movie_id in data.get("pending_review", {}):
+            del data["pending_review"][movie_id]
+        cls._save(data)
+        cls.update_queue_status(movie_id, "completed")
+        print(f"[STATE] Đã chuyển phim [{publish_info.get('title', movie_id)}] sang danh sách Hoàn Thành (Completed).")
+
+    @classmethod
     def mark_failed(cls, movie_id: str, reason: str, title: str = ""):
         data = cls._load()
         data["failed_ids"][movie_id] = {
@@ -176,19 +191,22 @@ class StateManager:
 
     @classmethod
     def sync_to_git(cls, commit_msg: str = "chore(state): update state files [skip ci]"):
-        """Chỉ commit file JSON nhẹ processed_db.json và production_queue.json lên Git, tuyệt đối không commit media."""
+        """Chỉ commit file JSON nhẹ processed_db.json, production_queue.json và schedule_calendar.json lên Git, tuyệt đối không commit media."""
         try:
             files_to_add = []
             if DB_FILE.exists():
                 files_to_add.append(str(DB_FILE))
             if QUEUE_FILE.exists():
                 files_to_add.append(str(QUEUE_FILE))
+            cal_file = STATE_DIR / "schedule_calendar.json"
+            if cal_file.exists():
+                files_to_add.append(str(cal_file))
             if files_to_add:
                 subprocess.run(["git", "add"] + files_to_add, check=False)
             res = subprocess.run(["git", "diff", "--cached", "--quiet"], check=False)
             if res.returncode != 0:
                 subprocess.run(["git", "commit", "-m", commit_msg], check=False)
                 subprocess.run(["git", "push"], check=False)
-                print("[STATE] Đã đồng bộ processed_db.json & production_queue.json lên GitHub.")
+                print("[STATE] Đã đồng bộ processed_db.json, production_queue.json & schedule_calendar.json lên GitHub.")
         except Exception as e:
             print(f"[STATE] Bỏ qua sync git: {e}")
