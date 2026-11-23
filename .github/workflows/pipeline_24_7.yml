@@ -131,6 +131,15 @@ jobs:
           export GEMINI_API_KEY=$(echo -n "$GEMINI_API_KEY" | tr -d '\r\n[:space:]')
           export GOOGLE_API_KEY=$(echo -n "$GOOGLE_API_KEY" | tr -d '\r\n[:space:]')
           
+          echo "=== KIỂM TRA ĐỘ SẠCH CỦA KEY TRÊN RUNNER ==="
+          python -c "import hashlib, os; k = os.environ.get('GEMINI_API_KEY', ''); print('Key length:', len(k), 'SHA256:', hashlib.sha256(k.encode()).hexdigest())"
+          
+          echo "=== KIỂM TRA CURL TRỰC TIẾP TỪ RUNNER TỚI GEMINI API ==="
+          CURL_OUT=$(curl -s -w "\nHTTP_CODE:%{http_code}" "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d '{"contents":[{"parts":[{"text":"ping"}]}]}')
+          echo "$CURL_OUT" | grep "HTTP_CODE"
+          echo "$CURL_OUT" | grep -o '"message": "[^"]*"' || true
+          echo "$CURL_OUT" | grep -o '"reason": "[^"]*"' || true
+          
           CMD="python main.py"
           if [ -n "${{ inputs.max_episodes }}" ]; then
             CMD="$CMD --max-episodes ${{ inputs.max_episodes }}"
