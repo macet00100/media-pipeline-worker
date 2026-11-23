@@ -106,6 +106,18 @@ jobs:
         run: |
           python tests/test_end_to_end_mock.py
 
+      - name: 🌐 Khởi động Tor Proxy (Bypass chặn IP Datacenter Cloud cho CDN Trung Quốc)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tor
+          sudo systemctl start tor
+          sleep 4
+          echo "Kiểm tra IP thoát qua Tor:"
+          curl -s --socks5-hostname 127.0.0.1:9050 https://api.ipify.org || true
+          echo ""
+          echo "Thử nghiệm kết nối v.lzcdn27.com qua Tor:"
+          curl -s -m 10 --socks5-hostname 127.0.0.1:9050 -I "https://v.lzcdn27.com/share/f65e4b73bc7df2837d715bf283f6afa7" | head -n 5 || true
+
       - name: 🚀 Khởi chạy Pipeline Sản Xuất Video (Khóa Auto-Publish xuất Gói Xét Duyệt)
         env:
           PYTHONUNBUFFERED: "1"
@@ -130,6 +142,15 @@ jobs:
           export GEMINI_API_KEYS=$(echo -n "$GEMINI_API_KEYS" | tr -d '\r\n[:space:]')
           export GEMINI_API_KEY=$(echo -n "$GEMINI_API_KEY" | tr -d '\r\n[:space:]')
           export GOOGLE_API_KEY=$(echo -n "$GOOGLE_API_KEY" | tr -d '\r\n[:space:]')
+          
+          # Định tuyến video CDN qua Tor SOCKS5 proxy để vượt tường lửa datacenter
+          export http_proxy="socks5h://127.0.0.1:9050"
+          export https_proxy="socks5h://127.0.0.1:9050"
+          export all_proxy="socks5h://127.0.0.1:9050"
+          export ALL_PROXY="socks5h://127.0.0.1:9050"
+          # Gemini API đi trực tiếp đường truyền Google tốc độ cao không qua proxy
+          export NO_PROXY="localhost,127.0.0.1,generativelanguage.googleapis.com,oauth2.googleapis.com"
+          export no_proxy="localhost,127.0.0.1,generativelanguage.googleapis.com,oauth2.googleapis.com"
           
           CMD="python main.py"
           if [ -n "${{ inputs.max_episodes }}" ]; then
