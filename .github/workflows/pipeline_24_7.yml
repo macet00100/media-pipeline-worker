@@ -139,6 +139,8 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
           AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH || 'false' }}
+          AUTO_PUBLISH_YOUTUBE: ${{ vars.AUTO_PUBLISH_YOUTUBE || vars.AUTO_PUBLISH || 'false' }}
+          AUTO_PUBLISH_FACEBOOK: ${{ vars.AUTO_PUBLISH_FACEBOOK || vars.AUTO_PUBLISH || 'false' }}
           BACKUP_TO_GDRIVE: ${{ vars.BACKUP_TO_GDRIVE || 'true' }}
           MAX_VIDEOS_PER_RUN: ${{ inputs.max_videos || '1' }}
           PREFERRED_SOURCE: ${{ inputs.force_source || 'lz' }}

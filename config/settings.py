@@ -40,6 +40,17 @@ class Settings:
     # 1. Pipeline Control & Automation Lock
     # Mặc định là False nếu không cấu hình; bật bằng AUTO_PUBLISH=true trong .env hoặc GitHub Variables
     AUTO_PUBLISH: bool = os.getenv("AUTO_PUBLISH", "false").strip().lower() in ("true", "1", "yes")
+    # Công tắc tách rời cho từng nền tảng (fallback về AUTO_PUBLISH nếu chưa định nghĩa riêng)
+    AUTO_PUBLISH_YOUTUBE: bool = (
+        os.getenv("AUTO_PUBLISH_YOUTUBE", "").strip().lower() in ("true", "1", "yes")
+        if os.getenv("AUTO_PUBLISH_YOUTUBE") is not None
+        else AUTO_PUBLISH
+    )
+    AUTO_PUBLISH_FACEBOOK: bool = (
+        os.getenv("AUTO_PUBLISH_FACEBOOK", "").strip().lower() in ("true", "1", "yes")
+        if os.getenv("AUTO_PUBLISH_FACEBOOK") is not None
+        else AUTO_PUBLISH
+    )
 
     # Golden Hours & Video Scheduling (GMT+7)
     GOLDEN_HOURS_VN: str = os.getenv("GOLDEN_HOURS_VN", "11:30,17:30,20:30")
@@ -94,8 +105,8 @@ class Settings:
     LOGO_X: int = 32
     LOGO_Y: int = 32
 
-    # Volume balance
-    VOL_ORIGINAL_FILM: float = 0.10
+    # Volume balance (Tắt 100% âm thanh phim gốc để chống Audio Content ID)
+    VOL_ORIGINAL_FILM: float = 0.0
     VOL_TTS_VOICE: float = 1.50
     VOL_BGM: float = 0.06
     VOL_OUTRO: float = 1.00  # 100% âm thanh sống động gốc của outtro

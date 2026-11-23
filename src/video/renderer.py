@@ -95,21 +95,15 @@ class VideoRenderer:
         safe_fonts_dir = fonts_dir.replace("\\", "/").replace(":", "\\:")
 
         # 1. Video Filtergraph:
-        # Scale/Crop 720x1280 -> Split kính mờ y=816..912 -> Logo 32,32 -> Subtitle ASS -> Copyright shield
-        v_filters = (
-            f"[0:v]scale={Settings.VIDEO_WIDTH}:{Settings.VIDEO_HEIGHT}:force_original_aspect_ratio=increase,"
-            f"crop={Settings.VIDEO_WIDTH}:{Settings.VIDEO_HEIGHT},setsar=1,fps={Settings.VIDEO_FPS},format={Settings.VIDEO_PIX_FMT},"
-            f"eq=contrast=1.03:brightness=0.01:saturation=1.06,unsharp=3:3:0.3[v_base];"
-            f"[v_base]split=2[v_main][v_crop];"
-            f"[v_crop]crop={Settings.FROSTED_GLASS_W}:{Settings.FROSTED_GLASS_H}:0:{Settings.FROSTED_GLASS_Y},"
-            f"boxblur=12:2,"
-            f"drawbox=x=0:y=0:w={Settings.FROSTED_GLASS_W}:h={Settings.FROSTED_GLASS_H}:color=white@0.12:t=fill,"
-            f"drawbox=x=0:y=0:w={Settings.FROSTED_GLASS_W}:h=1:color=white@0.25:t=fill,"
-            f"drawbox=x=0:y={Settings.FROSTED_GLASS_H - 1}:w={Settings.FROSTED_GLASS_W}:h=1:color=white@0.25:t=fill[v_glass];"
-            f"[v_main][v_glass]overlay=0:{Settings.FROSTED_GLASS_Y}[v_masked];"
-            f"[2:v]scale={Settings.LOGO_SIZE}:{Settings.LOGO_SIZE}:flags=lanczos[v_logo];"
-            f"[v_masked][v_logo]overlay={Settings.LOGO_X}:{Settings.LOGO_Y}[v_logo_applied];"
-            f"[v_logo_applied]ass='{safe_ass_path}':fontsdir='{safe_fonts_dir}'[v_out]"
+        # Lá Chắn 4 Lớp: Nền mờ 28px + Khung 86% ở giữa + Viền sáng + Logo 32,32 + Subtitle ASS
+        v_filters = CopyrightShield.get_body_render_filter(
+            width=Settings.VIDEO_WIDTH,
+            height=Settings.VIDEO_HEIGHT,
+            safe_ass_path=safe_ass_path,
+            safe_fonts_dir=safe_fonts_dir,
+            logo_size=Settings.LOGO_SIZE,
+            logo_x=Settings.LOGO_X,
+            logo_y=Settings.LOGO_Y
         )
 
         # 2. Audio Filtergraph:
@@ -134,7 +128,7 @@ class VideoRenderer:
             "ffmpeg", "-y",
             "-i", clean_movie_path,
             "-i", voice_track_path,
-            "-i", logo_path
+            "-loop", "1", "-i", logo_path
         ]
         if has_bgm:
             cmd.extend(["-stream_loop", "-1", "-i", bgm_path])

@@ -32,6 +32,39 @@ class Publisher:
             return True
         return bool(getattr(Settings, "AUTO_PUBLISH", False))
 
+    @classmethod
+    def is_youtube_auto_publish_enabled(cls) -> bool:
+        """Kiểm tra cờ AUTO_PUBLISH_YOUTUBE (fallback về AUTO_PUBLISH nếu chưa đặt)."""
+        val = os.getenv("AUTO_PUBLISH_YOUTUBE")
+        if val is not None and val.strip():
+            return val.strip().lower() in ("true", "1", "yes")
+        return cls.is_auto_publish_enabled()
+
+    @classmethod
+    def is_facebook_auto_publish_enabled(cls) -> bool:
+        """Kiểm tra cờ AUTO_PUBLISH_FACEBOOK (fallback về AUTO_PUBLISH nếu chưa đặt)."""
+        val = os.getenv("AUTO_PUBLISH_FACEBOOK")
+        if val is not None and val.strip():
+            return val.strip().lower() in ("true", "1", "yes")
+        return cls.is_auto_publish_enabled()
+
+    @classmethod
+    def send_telegram_alert(cls, message: str) -> None:
+        """Gửi cảnh báo khẩn cấp qua Telegram bot."""
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or getattr(Settings, "TELEGRAM_BOT_TOKEN", None)
+        chat_id = os.getenv("TELEGRAM_CHAT_ID") or getattr(Settings, "TELEGRAM_CHAT_ID", None)
+        if not (bot_token and chat_id):
+            return
+        try:
+            import requests
+            requests.post(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                json={"chat_id": chat_id, "text": message, "parse_mode": "Markdown"},
+                timeout=10
+            )
+        except Exception:
+            pass
+
     @staticmethod
     def sanitize_youtube_metadata(
         title: str,
@@ -144,11 +177,15 @@ class Publisher:
         publish_at_utc: str,
         thumbnail_path: Optional[str] = None,
         tags: Optional[List[str]] = None,
-        category_id: str = "24"
+        category_id: str = "24",
+        skip_audit: bool = False
     ) -> Dict[str, Any]:
         """
-        Upload video lên YouTube Data API v3 dạng Resumable Upload (chunks 10MB)
-        và hẹn giờ phát sóng công khai (privacyStatus='private' + publishAt).
+        Quy trình upload YouTube 2 pha chuẩn:
+        - Pha 1: Upload video ở trạng thái 'private', CHƯA gán publishAt.
+        - Pha 2: Tự khám Content ID (poll status & contentDetails trong tối đa 6 phút).
+          + Nếu BỊ CHẶN: Tự động gọi youtube.videos().delete(id=video_id) xóa sạch khỏi kênh, báo Telegram và trả về copyright_blocked=True.
+          + Nếu SẠCH BẢN QUYỀN: Gán lịch Giờ Vàng publishAt và cập nhật Custom Thumbnail 3 tầng.
         """
         from googleapiclient.http import MediaFileUpload
 
@@ -159,6 +196,7 @@ class Publisher:
 
         youtube = cls.get_youtube_service()
 
+        # PHA 1: Upload ở chế độ Private (CHƯA gán publishAt)
         body = {
             "snippet": {
                 "title": clean_title,
@@ -169,8 +207,7 @@ class Publisher:
                 "defaultAudioLanguage": "vi"
             },
             "status": {
-                "privacyStatus": "private",  # Bắt buộc private khi đặt lịch
-                "publishAt": publish_at_utc,
+                "privacyStatus": "private",  # Khóa private, đợi tự khám Content ID
                 "selfDeclaredMadeForKids": False
             }
         }
@@ -190,8 +227,7 @@ class Publisher:
             media_body=media
         )
 
-        print(f"[YouTube Upload] Bắt đầu upload video '{clean_title}'...")
-        print(f"   - Lịch công chiếu UTC: {publish_at_utc}")
+        print(f"[YouTube Upload] Bắt đầu Pha 1: Upload private video '{clean_title}'...")
 
         response = None
         retries = 0
@@ -213,7 +249,131 @@ class Publisher:
                 time.sleep(backoff)
 
         video_id = response.get("id")
-        print(f"[YouTube Upload] ✅ Upload thành công! Video ID: {video_id}")
+        print(f"[YouTube Upload] ✅ Pha 1 hoàn tất! Video ID: {video_id} (Đang ở chế độ Private)")
+
+        # PHA 2: TỰ KHÁM CONTENT ID VÀ TỰ XÓA NẾU BỊ CHẶN
+        if not skip_audit:
+            print(f"[YouTube Audit] Bắt đầu Pha 2: Tự khám Content ID cho video {video_id} (tối đa 6 phút)...")
+            max_audit_seconds = 360  # tối đa 6 phút
+            poll_interval = 30
+            elapsed = 0
+            is_blocked = False
+            block_reason = ""
+            is_processed = False
+
+            while elapsed < max_audit_seconds:
+                time.sleep(poll_interval)
+                elapsed += poll_interval
+
+                try:
+                    v_res = youtube.videos().list(
+                        part="status,contentDetails",
+                        id=video_id
+                    ).execute()
+                    items = v_res.get("items", [])
+                    if not items:
+                        print(f"[YouTube Audit] Cảnh báo: Không tìm thấy video {video_id} khi kiểm tra.")
+                        continue
+
+                    v_item = items[0]
+                    v_status = v_item.get("status", {})
+                    v_cd = v_item.get("contentDetails", {})
+                    upload_status = v_status.get("uploadStatus", "")
+                    rejection_reason = v_status.get("rejectionReason", "")
+                    region_restriction = v_cd.get("regionRestriction", {})
+
+                    blocked_regions = region_restriction.get("blocked", [])
+                    allowed_regions = region_restriction.get("allowed", [])
+
+                    print(
+                        f"[YouTube Audit] ({elapsed}s/{max_audit_seconds}s) "
+                        f"uploadStatus: '{upload_status}', rejectionReason: '{rejection_reason}', "
+                        f"quốc gia bị chặn: {len(blocked_regions)}"
+                    )
+
+                    # 1. Bị từ chối do bản quyền
+                    if upload_status in ("rejected", "failed") and rejection_reason == "copyright":
+                        is_blocked = True
+                        block_reason = f"Upload bị từ chối do vi phạm bản quyền: {rejection_reason}"
+                        break
+
+                    # 2. Bị chặn tại Việt Nam hoặc bị chặn diện rộng (>= 30 quốc gia)
+                    if "VN" in blocked_regions or len(blocked_regions) >= 30:
+                        is_blocked = True
+                        block_reason = (
+                            f"Chặn vùng lãnh thổ do bản quyền "
+                            f"(số quốc gia bị chặn: {len(blocked_regions)}, chặn tại VN: {'VN' in blocked_regions})"
+                        )
+                        break
+
+                    # 3. Chỉ cho phép danh sách quốc gia mà không có Việt Nam
+                    if allowed_regions and "VN" not in allowed_regions:
+                        is_blocked = True
+                        block_reason = f"Chặn hiển thị tại Việt Nam (danh sách cho phép không có VN)"
+                        break
+
+                    # 4. Khi YouTube đã xử lý xong (processed) và sau ít nhất 60s không thấy hạn chế
+                    if upload_status == "processed":
+                        is_processed = True
+                        if elapsed >= 60:
+                            print(f"[YouTube Audit] ✅ Video đã được YouTube xử lý xong (processed) và sạch bản quyền sau {elapsed}s.")
+                            break
+
+                except Exception as audit_err:
+                    print(f"[YouTube Audit] Cảnh báo lỗi truy vấn trạng thái: {audit_err}")
+
+            # XỬ LÝ KHI BỊ CHẶN BẢN QUYỀN
+            if is_blocked:
+                print("=" * 70)
+                print(f"[YouTube Audit] ❌ PHÁT HIỆN BỊ CHẶN BẢN QUYỀN: {block_reason}")
+                print(f"[YouTube Audit] 🧹 Đang tự động XÓA SẠCH video {video_id} khỏi kênh...")
+                print("=" * 70)
+                try:
+                    youtube.videos().delete(id=video_id).execute()
+                    print(f"[YouTube Audit] ✅ ĐÃ XÓA VĨNH VIỄN video {video_id} khỏi kênh YouTube.")
+                except Exception as del_err:
+                    print(f"[YouTube Audit] ⚠️ Lỗi khi xóa video {video_id}: {del_err}")
+
+                cls.send_telegram_alert(
+                    f"🚨 *[Cool Mèo Phim] CẢNH BÁO BẢN QUYỀN YOUTUBE*\n\n"
+                    f"🎬 *Video:* {clean_title}\n"
+                    f"❌ *Lý do:* {block_reason}\n"
+                    f"🧹 *Hành động:* Hệ thống đã tự động XÓA SẠCH video khỏi kênh và hủy bỏ gói."
+                )
+
+                return {
+                    "success": False,
+                    "copyright_blocked": True,
+                    "video_id": video_id,
+                    "reason": block_reason,
+                    "platform": "youtube"
+                }
+
+        # PHA HOÀN TẤT: Video SẠCH BẢN QUYỀN -> Gán lịch Giờ Vàng & Set Custom Thumbnail
+        print(f"[YouTube Schedule] Video SẠCH BẢN QUYỀN! Đang gán lịch công chiếu Giờ Vàng: {publish_at_utc}...")
+        try:
+            youtube.videos().update(
+                part="snippet,status",
+                body={
+                    "id": video_id,
+                    "snippet": {
+                        "title": clean_title,
+                        "description": clean_desc,
+                        "tags": clean_tags,
+                        "categoryId": category_id,
+                        "defaultLanguage": "vi",
+                        "defaultAudioLanguage": "vi"
+                    },
+                    "status": {
+                        "privacyStatus": "private",  # Private chờ đến giờ công chiếu
+                        "publishAt": publish_at_utc,
+                        "selfDeclaredMadeForKids": False
+                    }
+                }
+            ).execute()
+            print(f"[YouTube Schedule] ✅ Đã gắn lịch công chiếu thành công ({publish_at_utc}).")
+        except Exception as upd_err:
+            print(f"[YouTube Schedule] ⚠️ Cảnh báo update status: {upd_err}")
 
         # Set custom thumbnail if provided
         thumb_uploaded = False
@@ -232,6 +392,7 @@ class Publisher:
 
         return {
             "success": True,
+            "copyright_blocked": False,
             "platform": "youtube",
             "video_id": video_id,
             "video_url": f"https://www.youtube.com/watch?v={video_id}",
@@ -481,8 +642,10 @@ class Publisher:
                 f"[QA GATE BLOCKED] Gói xét duyệt không vượt qua cổng QA (passed={qa_report.get('passed')}). Nghiêm cấm upload!"
             )
 
-        # 2. KIỂM TRA AUTO_PUBLISH
-        auto_pub = force_publish or cls.is_auto_publish_enabled()
+        # 2. KIỂM TRA AUTO_PUBLISH THEO NỀN TẢNG
+        auto_yt = force_publish or cls.is_youtube_auto_publish_enabled()
+        auto_fb = force_publish or cls.is_facebook_auto_publish_enabled()
+        auto_pub = auto_yt or auto_fb
 
         # Tìm file video
         video_candidates = [
@@ -597,47 +760,73 @@ class Publisher:
                 pass
 
         # A. UPLOAD YOUTUBE
-        if existing_result.get("youtube", {}).get("success"):
-            print(f"[YouTube Upload] ✅ Video đã được upload trước đó (ID: {existing_result['youtube'].get('video_id')}). Bỏ qua upload trùng lặp.")
-            yt_result = existing_result["youtube"]
+        if auto_yt:
+            if existing_result.get("youtube", {}).get("success"):
+                print(f"[YouTube Upload] ✅ Video đã được upload trước đó (ID: {existing_result['youtube'].get('video_id')}). Bỏ qua upload trùng lặp.")
+                yt_result = existing_result["youtube"]
+            else:
+                try:
+                    yt_result = cls.upload_to_youtube(
+                        video_path=str(video_file),
+                        title=title,
+                        description=description,
+                        publish_at_utc=publish_at_utc,
+                        thumbnail_path=str(thumb_file) if thumb_file else None,
+                        tags=tags
+                    )
+                except Exception as yt_err:
+                    print(f"[Publisher] ❌ Lỗi upload YouTube: {yt_err}")
+                    yt_result = {
+                        "success": False,
+                        "error": str(yt_err),
+                        "platform": "youtube"
+                    }
+
+                # NẾU BỊ CHẶN BẢN QUYỀN: HỦY BỎ VÀ ĐÁNH DẤU COPYRIGHT_BLOCKED
+                if yt_result.get("copyright_blocked"):
+                    print(f"[Publisher] ⚠️ Video [{title}] bị chặn bản quyền YouTube. Đã tự động xóa video khỏi kênh.")
+                    StateManager.mark_failed(movie_id, yt_result.get("reason", "copyright_blocked"), title)
+                    result_payload = {
+                        "movie_id": movie_id,
+                        "title": title,
+                        "package_dir": str(pkg_dir),
+                        "qa_passed": True,
+                        "copyright_blocked": True,
+                        "overall_success": False,
+                        "youtube": yt_result,
+                        "facebook": {"success": False, "skipped": True}
+                    }
+                    with open(publish_res_file, "w", encoding="utf-8") as f:
+                        json.dump(result_payload, f, ensure_ascii=False, indent=2)
+                    return result_payload
         else:
-            try:
-                yt_result = cls.upload_to_youtube(
-                    video_path=str(video_file),
-                    title=title,
-                    description=description,
-                    publish_at_utc=publish_at_utc,
-                    thumbnail_path=str(thumb_file) if thumb_file else None,
-                    tags=tags
-                )
-            except Exception as yt_err:
-                print(f"[Publisher] ❌ Lỗi upload YouTube: {yt_err}")
-                yt_result = {
-                    "success": False,
-                    "error": str(yt_err),
-                    "platform": "youtube"
-                }
+            print("[YouTube Upload] AUTO_PUBLISH_YOUTUBE=false: Bỏ qua upload YouTube.")
+            yt_result = {"success": False, "skipped": True, "platform": "youtube"}
 
         # B. UPLOAD FACEBOOK
-        if existing_result.get("facebook", {}).get("success"):
-            print(f"[Facebook Upload] ✅ Video đã được upload lên Facebook trước đó (ID: {existing_result['facebook'].get('video_id')}). Bỏ qua upload trùng lặp.")
-            fb_result = existing_result["facebook"]
+        if auto_fb:
+            if existing_result.get("facebook", {}).get("success"):
+                print(f"[Facebook Upload] ✅ Video đã được upload lên Facebook trước đó (ID: {existing_result['facebook'].get('video_id')}). Bỏ qua upload trùng lặp.")
+                fb_result = existing_result["facebook"]
+            else:
+                try:
+                    fb_result = cls.upload_to_facebook(
+                        video_path=str(video_file),
+                        title=title,
+                        description=description,
+                        scheduled_publish_timestamp=scheduled_timestamp,
+                        thumbnail_path=str(thumb_file) if thumb_file else None
+                    )
+                except Exception as fb_err:
+                    print(f"[Publisher] ❌ Lỗi upload Facebook: {fb_err}")
+                    fb_result = {
+                        "success": False,
+                        "error": str(fb_err),
+                        "platform": "facebook"
+                    }
         else:
-            try:
-                fb_result = cls.upload_to_facebook(
-                    video_path=str(video_file),
-                    title=title,
-                    description=description,
-                    scheduled_publish_timestamp=scheduled_timestamp,
-                    thumbnail_path=str(thumb_file) if thumb_file else None
-                )
-            except Exception as fb_err:
-                print(f"[Publisher] ❌ Lỗi upload Facebook: {fb_err}")
-                fb_result = {
-                    "success": False,
-                    "error": str(fb_err),
-                    "platform": "facebook"
-                }
+            print("[Facebook Upload] AUTO_PUBLISH_FACEBOOK=false: Bỏ qua upload Facebook.")
+            fb_result = {"success": False, "skipped": True, "platform": "facebook"}
 
         overall_success = yt_result.get("success", False) or fb_result.get("success", False)
 

@@ -329,16 +329,14 @@ class VoiceDrivenEditor:
         cls,
         t_audio: float,
         source_clip_ranges: List[Dict[str, float]],
-        min_cut_sec: float = 3.0,
-        max_cut_sec: float = 6.0
-    ) -> List[Dict[str, float]]:
+        min_cut_sec: float = 1.8,
+        max_cut_sec: float = 2.5
+    ) -> List[Dict[str, Any]]:
         """
-        Thuật toán Chia Lát Cắt Động (Dynamic Visual Slicing):
-        - Tổng thời lượng hình ảnh khớp đúng T_audio giây (sai số <= 0.05s).
-        - Tuyệt đối không giữ một góc quay quá 6-7s.
-        - Mỗi lát cắt có thời lượng 3.0s - 6.0s (trừ trường hợp T_audio < 3s).
-        - MỌI lát cắt CHỈ ĐƯỢC PHÉP lấy từ source_clip_ranges của chính block này.
-        - Tuyệt đối không bao giờ vượt quá start/end của bất kỳ range nào.
+        Thuật toán Chia Lát Cắt Động (Dynamic Visual Slicing) - Chống Visual Content ID:
+        - Rút ngắn bắt buộc thời lượng mỗi lát cắt xuống 1.8s - 2.5s (tuyệt đối không quá 2.5s).
+        - Giữa 2 lát cắt liên tiếp nhảy cóc nhẹ +0.8s..+1.5s trong phim gốc để phá cấu trúc chuỗi tuyến tính.
+        - Luân phiên tỷ lệ zoom theo lát cắt: Lát lẻ phóng 1.06x, Lát chẵn phóng 1.15x.
         """
         if t_audio <= 0:
             return []
@@ -354,17 +352,14 @@ class VoiceDrivenEditor:
         if not valid_ranges:
             valid_ranges = [{"start": 35.0, "end": 90.0, "len": 55.0}]
 
-        # 2. Tính toán danh sách thời lượng các lát cắt (slice durations)
+        # 2. Tính toán danh sách thời lượng các lát cắt (1.8s - 2.5s)
         if t_audio <= max_cut_sec:
-            slice_durations = [t_audio]
+            slice_durations = [round(t_audio, 2)]
         else:
-            k = max(2, round(t_audio / 4.5))
+            k = max(2, math.ceil(t_audio / max_cut_sec))
             avg = t_audio / k
-            if avg > max_cut_sec:
-                k = math.ceil(t_audio / max_cut_sec)
-                avg = t_audio / k
-            elif avg < min_cut_sec and k > 2:
-                k = max(2, math.floor(t_audio / min_cut_sec))
+            while avg > max_cut_sec:
+                k += 1
                 avg = t_audio / k
 
             slice_durations = []
@@ -375,16 +370,22 @@ class VoiceDrivenEditor:
                 rem -= cur
             slice_durations.append(round(rem, 2))
 
-        # 3. Ánh xạ các lát cắt vào các dải an toàn của block
+        # 3. Ánh xạ các lát cắt vào các dải an toàn của block kèm nhảy cóc và luân phiên zoom
         visual_cuts = []
         range_idx = 0
         range_offset = 0.0
 
-        for dur in slice_durations:
+        for idx, dur in enumerate(slice_durations):
             cur_r = valid_ranges[range_idx % len(valid_ranges)]
             r_st = cur_r["start"]
             r_en = cur_r["end"]
             r_len = cur_r["len"]
+
+            # Luân phiên zoom: lẻ phóng 1.06x, chẵn phóng 1.15x
+            cut_zoom = 1.06 if (idx % 2 == 1) else 1.15
+
+            # Nhảy cóc nhẹ +0.8s..+1.5s giữa các lát cắt liên tiếp
+            jump_sec = 1.2 if idx > 0 else 0.0
 
             if r_len <= dur:
                 cut_start = r_st
@@ -393,7 +394,8 @@ class VoiceDrivenEditor:
                 visual_cuts.append({
                     "start": round(cut_start, 2),
                     "end": round(cut_end, 2),
-                    "duration": actual_dur
+                    "duration": actual_dur,
+                    "zoom": cut_zoom
                 })
                 rem_dur = round(dur - actual_dur, 2)
                 range_idx += 1
@@ -406,9 +408,10 @@ class VoiceDrivenEditor:
                     visual_cuts.append({
                         "start": round(n_st, 2),
                         "end": round(sub_cut_end, 2),
-                        "duration": round(sub_cut_end - n_st, 2)
+                        "duration": round(sub_cut_end - n_st, 2),
+                        "zoom": cut_zoom
                     })
-                    range_offset = rem_dur + 1.5
+                    range_offset = rem_dur + 1.2
             else:
                 cut_start = r_st + range_offset
                 if cut_start + dur > r_en:
@@ -423,9 +426,10 @@ class VoiceDrivenEditor:
                 visual_cuts.append({
                     "start": round(cut_start, 2),
                     "end": round(cut_end, 2),
-                    "duration": round(cut_end - cut_start, 2)
+                    "duration": round(cut_end - cut_start, 2),
+                    "zoom": cut_zoom
                 })
-                range_offset += dur + 2.0
+                range_offset += dur + jump_sec
                 if range_offset + dur > cur_r["len"]:
                     range_idx += 1
                     range_offset = 0.0
@@ -738,19 +742,33 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             "-i", concat_audio_txt, "-c", "copy", full_voice_path
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        # 4. Cắt và nối các lát cắt hình ảnh từ phim gốc
+        # 4. Cắt và nối các lát cắt hình ảnh từ phim gốc với Lá Chắn Bản Quyền Lớp 1 & Lớp 2
+        from src.video.copyright_shield import CopyrightShield
+
         sliced_video_clips = []
         for c_idx, cut in enumerate(all_cuts):
             clip_out = str(tmp_path / f"cut_{c_idx}.mp4")
             c_start = cut["start"]
             c_dur = cut["duration"]
+            c_zoom = cut.get("zoom", 1.06 if (c_idx % 2 == 1) else 1.15)
 
-            # Cắt lát nhanh bằng FFmpeg
+            # Lớp 1 (hflip + speed 1.08x) + Lớp 2 (kính mờ che sub Trung TRƯỚC zoom) + Zoom lát
+            cut_filter = CopyrightShield.get_cut_filter(
+                width=profile.width,
+                height=profile.height,
+                frosted_glass_y=profile.frosted_glass_y,
+                frosted_glass_h=profile.frosted_glass_h,
+                frosted_glass_w=profile.frosted_glass_w,
+                zoom_ratio=c_zoom
+            )
+
             cmd_cut = [
                 "ffmpeg", "-nostdin", "-y",
                 "-ss", str(c_start),
                 "-t", str(c_dur),
                 "-i", source_video,
+                "-filter_complex", cut_filter,
+                "-map", "[v_out]",
                 "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22",
                 "-an",
                 clip_out
@@ -787,7 +805,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ass_sub_path = str(tmp_path / "subtitles_profile.ass")
         cls.generate_profile_subtitles_ass(all_subtitles, ass_sub_path, profile)
 
-        # 6. Render thân phim hoàn chỉnh với Filtergraph tương ứng với Profile
+        # 6. Render thân phim hoàn chỉnh với Lá Chắn Bản Quyền Lớp 3 & Lớp 4
         movie_body_path = str(tmp_path / "movie_body_rendered.mp4")
         logo_path = str(ASSETS_DIR / "logo.png")
         fonts_dir = str(ASSETS_DIR / "fonts")
@@ -797,42 +815,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         safe_ass = Path(ass_sub_path).resolve().as_posix().replace(":", "\\:")
         safe_fonts = Path(fonts_dir).resolve().as_posix().replace(":", "\\:")
 
-        if profile.is_vertical:
-            # FILTERGRAPH PROFILE DỌC (720x1280 @ 30fps)
-            v_filters = (
-                f"[0:v]scale={profile.width}:{profile.height}:force_original_aspect_ratio=increase,"
-                f"crop={profile.width}:{profile.height},setsar=1,fps={profile.fps},"
-                f"format={Settings.VIDEO_PIX_FMT},"
-                f"eq=contrast=1.03:brightness=0.01:saturation=1.06,unsharp=3:3:0.3[v_base];"
-                f"[v_base]split=2[v_main][v_crop];"
-                f"[v_crop]crop={profile.frosted_glass_w}:{profile.frosted_glass_h}:0:{profile.frosted_glass_y},"
-                f"boxblur=20:3,"
-                f"drawbox=x=0:y=0:w={profile.frosted_glass_w}:h={profile.frosted_glass_h}:color=black@0.26:t=fill,"
-                f"drawbox=x=0:y=0:w={profile.frosted_glass_w}:h=1:color=white@0.22:t=fill,"
-                f"drawbox=x=0:y={profile.frosted_glass_h - 1}:w={profile.frosted_glass_w}:h=1:color=white@0.22:t=fill[v_glass];"
-                f"[v_main][v_glass]overlay=0:{profile.frosted_glass_y}[v_masked];"
-                f"[2:v]scale={profile.logo_size}:{profile.logo_size}:flags=lanczos[v_logo];"
-                f"[v_masked][v_logo]overlay={profile.logo_x}:{profile.logo_y}:eof_action=repeat[v_logo_applied];"
-                f"[v_logo_applied]ass='{safe_ass}':fontsdir='{safe_fonts}'[v_out]"
-            )
-        else:
-            # FILTERGRAPH PROFILE NGANG (1280x720 @ 30fps - GIỮ NGUYÊN TOÀN CẢNH)
-            v_filters = (
-                f"[0:v]scale={profile.width}:{profile.height}:force_original_aspect_ratio=decrease,"
-                f"pad={profile.width}:{profile.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={profile.fps},"
-                f"format={Settings.VIDEO_PIX_FMT},"
-                f"eq=contrast=1.03:brightness=0.01:saturation=1.06,unsharp=3:3:0.3[v_base];"
-                f"[v_base]split=2[v_main][v_crop];"
-                f"[v_crop]crop={profile.frosted_glass_w}:{profile.frosted_glass_h}:0:{profile.frosted_glass_y},"
-                f"boxblur=20:3,"
-                f"drawbox=x=0:y=0:w={profile.frosted_glass_w}:h={profile.frosted_glass_h}:color=black@0.26:t=fill,"
-                f"drawbox=x=0:y=0:w={profile.frosted_glass_w}:h=1:color=white@0.22:t=fill,"
-                f"drawbox=x=0:y={profile.frosted_glass_h - 1}:w={profile.frosted_glass_w}:h=1:color=white@0.22:t=fill[v_glass];"
-                f"[v_main][v_glass]overlay=0:{profile.frosted_glass_y}[v_masked];"
-                f"[2:v]scale={profile.logo_size}:{profile.logo_size}:flags=lanczos[v_logo];"
-                f"[v_masked][v_logo]overlay={profile.logo_x}:{profile.logo_y}:eof_action=repeat[v_logo_applied];"
-                f"[v_logo_applied]ass='{safe_ass}':fontsdir='{safe_fonts}'[v_out]"
-            )
+        # FILTERGRAPH 4 LỚP: Nền mờ 28px + Khung 86% ở giữa + Viền sáng + Logo + Subtitle ASS
+        v_filters = CopyrightShield.get_body_render_filter(
+            width=profile.width,
+            height=profile.height,
+            safe_ass_path=safe_ass,
+            safe_fonts_dir=safe_fonts,
+            logo_size=profile.logo_size,
+            logo_x=profile.logo_x,
+            logo_y=profile.logo_y
+        )
 
         # Hòa âm: Giọng đọc 150% + BGM 6% (nếu có)
         if has_bgm:
