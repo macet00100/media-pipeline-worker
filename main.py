@@ -684,40 +684,50 @@ def main():
             except Exception as e:
                 print(f"[MAIN] Lỗi query API cho movie {args.movie_id}: {e}")
 
-    if not target_movie:
-        # Lấy phim #1 từ hàng chờ hiện tại
+    candidates_to_try = []
+    if target_movie:
+        candidates_to_try.append(target_movie)
+    else:
         q_file = Path("state/production_queue.json")
         if q_file.exists():
             with open(q_file, "r", encoding="utf-8") as f:
                 q_data = json.load(f)
-                queued_list = [m for m in q_data.get("queue", []) if m.get("status") == "queued"]
-                if queued_list:
-                    target_movie = queued_list[0]
+                candidates_to_try = [m for m in q_data.get("queue", []) if m.get("status") == "queued"]
 
-    if not target_movie:
-        # Nếu hàng chờ trống, chạy tuyển chọn Top 3
-        print("[MAIN] Hàng chờ trống. Đang quét và tuyển chọn Top 3 phim hay nhất hôm nay...")
-        top_movies = MovieCurator.curate_daily_top_movies(force_refresh=True)
-        if top_movies:
-            target_movie = top_movies[0]
+        if not candidates_to_try:
+            print("[MAIN] Hàng chờ trống. Đang quét và tuyển chọn Top 3 phim hay nhất hôm nay...")
+            curation_res = MovieCurator.run_curation_pipeline()
+            candidates_to_try = curation_res.get("selected", [])
 
-    if not target_movie:
+    if not candidates_to_try:
         print("[MAIN] Không tìm thấy phim nào phù hợp để sản xuất.")
-        return
+        sys.exit(1)
 
-    # Chạy sản xuất phim mục tiêu
-    result = process_drama_voice_driven(target_movie, max_episodes=args.max_episodes)
-    if result:
-        print("\n" + "=" * 70)
-        print("🎉 KẾT QUẢ SẢN XUẤT THÀNH CÔNG:")
-        print(f"📁 Thư mục Gói Xét Duyệt: {result['package_dir']}")
-        print(f"🎥 Video thành phẩm      : {result['final_video']}")
-        print(f"🖼️ Thumbnail dọc        : {result['thumbnail_vertical']}")
-        print(f"🖼️ Thumbnail ngang      : {result['thumbnail_horizontal']}")
-        print(f"⏰ Lịch Giờ Vàng         : {result['schedule_info'].get('golden_slot_vn')}")
-        print("=" * 70)
-    else:
-        print("\n❌ SẢN XUẤT THẤT BẠI!")
+    successful_runs = []
+    for cand in candidates_to_try:
+        if StateManager.is_processed_or_pending(cand["id"]):
+            print(f"[MAIN] Bỏ qua phim đã xử lý hoặc đang chờ duyệt: {cand['title']} ({cand['id']})")
+            continue
+
+        print(f"\n[MAIN] >>> Bắt đầu sản xuất ứng viên: {cand['title']} ({cand['id']}) <<<")
+        res = process_drama_voice_driven(cand, max_episodes=args.max_episodes)
+        if res:
+            successful_runs.append(res)
+            print("\n" + "=" * 70)
+            print(f"🎉 KẾT QUẢ SẢN XUẤT THÀNH CÔNG: {cand['title']}")
+            print(f"📁 Thư mục Gói Xét Duyệt: {res['package_dir']}")
+            print(f"🎥 Video thành phẩm      : {res['final_video']}")
+            print(f"🖼️ Thumbnail dọc        : {res['thumbnail_vertical']}")
+            print(f"🖼️ Thumbnail ngang      : {res['thumbnail_horizontal']}")
+            print(f"⏰ Lịch Giờ Vàng         : {res['schedule_info'].get('golden_slot_vn')}")
+            print("=" * 70)
+            if len(successful_runs) >= Settings.MAX_VIDEOS_PER_RUN:
+                break
+        else:
+            print(f"[MAIN] ⚠️ Sản xuất [{cand['title']}] không thành công. Thử ứng viên tiếp theo trong danh sách...")
+
+    if not successful_runs:
+        print("\n❌ TẤT CẢ ỨNG VIÊN ĐỀU THẤT BẠI!")
         sys.exit(1)
 
 if __name__ == "__main__":

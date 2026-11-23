@@ -37,7 +37,7 @@
         "https://v.lzcdn27.com/20261103/21189_749f23aa/index.m3u8",
         "https://v.lzcdn27.com/20261103/21188_28230075/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-22T16:23:13.820666",
       "completion_verified": true,
       "total_episodes": 16
