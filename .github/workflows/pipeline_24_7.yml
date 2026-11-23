@@ -102,20 +102,27 @@ jobs:
           sudo tee /etc/tor/torrc << 'EOF'
           HTTPTunnelPort 9080
           SocksPort 9050
-          ExitNodes {hk},{tw},{sg},{jp}
-          StrictNodes 0
+          ControlPort 9051
+          CookieAuthentication 0
+          ExitNodes {hk},{mo},{tw},{jp},{sg}
+          StrictNodes 1
           EOF
           sudo systemctl restart tor
-          echo "Đang đợi Tor khởi động..."
+          echo "Đang đợi Tor khởi động và thiết lập mạch thoát Châu Á (HK, MO, TW, JP, SG)..."
           for i in {1..35}; do
             if curl -s -x http://127.0.0.1:9080 -m 4 https://check.torproject.org/api/ip | grep -q '"IsTor":true'; then
-              echo "✅ Tor Proxy đã sẵn sàng!"
-              break
+              TOR_IP=$(curl -s -x http://127.0.0.1:9080 -m 4 https://api.ipify.org || echo "Unknown")
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 6 -x http://127.0.0.1:9080 -A "Mozilla/5.0" "https://v.lzcdn27.com/20261021/19753_d0f36985/index.m3u8" || true)
+              echo "Vòng $i: Tor IP=$TOR_IP | CDN Liangzi HTTP=$HTTP_CODE"
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "🎉 XÁC NHẬN THÔNG MẠNG 100% TỚI LIANGZI CDN (HTTP 200 OK)!"
+                break
+              fi
+              # Nếu chưa phải 200, yêu cầu Tor tạo mạch mới
+              sudo systemctl reload tor || true
             fi
-            sleep 1
+            sleep 2
           done
-          TOR_IP=$(curl -s -x http://127.0.0.1:9080 -m 5 https://api.ipify.org || echo "Unknown")
-          echo "Tor Public IP: $TOR_IP"
 
       - name: 📦 Cài đặt thư viện Python
         run: |

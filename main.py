@@ -696,8 +696,11 @@ def main():
                     ignored = StateManager.get_ignored_ids()
                     candidates_to_try = [
                         m for m in q_data.get("queue", [])
-                        if m.get("status") == "queued" and m.get("id") not in ignored
+                        if m.get("status", "queued") == "queued" and m.get("id") not in ignored
                     ]
+                    pref_source = os.getenv("PREFERRED_SOURCE", "").lower()
+                    if pref_source:
+                        candidates_to_try.sort(key=lambda m: 0 if m.get("source_id") == pref_source else 1)
             except Exception as e:
                 print(f"[MAIN] Lỗi đọc queue file: {e}")
 
