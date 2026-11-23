@@ -705,7 +705,7 @@ def main():
 
     successful_runs = []
     for cand in candidates_to_try:
-        if StateManager.is_processed_or_pending(cand["id"]):
+        if cand["id"] in StateManager.get_ignored_ids():
             print(f"[MAIN] Bỏ qua phim đã xử lý hoặc đang chờ duyệt: {cand['title']} ({cand['id']})")
             continue
 
