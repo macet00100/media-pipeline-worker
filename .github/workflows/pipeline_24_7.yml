@@ -24,6 +24,10 @@ on:
         description: 'Số lượng video sản xuất tối đa trong lượt này'
         required: false
         default: '1'
+      max_episodes:
+        description: 'Giới hạn số tập xử lý cho mỗi phim (để test nhanh, để trống nếu làm trọn bộ)'
+        required: false
+        default: ''
 
 # KHÓA CONCURRENCY: Tuyệt đối không cho 2 job chạy song song đè dữ liệu
 concurrency:
@@ -122,7 +126,17 @@ jobs:
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: |
-          python main.py
+          # Làm sạch 100% khoảng trắng và ký tự xuống dòng khỏi các biến môi trường
+          export GEMINI_API_KEYS=$(echo -n "$GEMINI_API_KEYS" | tr -d '\r\n[:space:]')
+          export GEMINI_API_KEY=$(echo -n "$GEMINI_API_KEY" | tr -d '\r\n[:space:]')
+          export GOOGLE_API_KEY=$(echo -n "$GOOGLE_API_KEY" | tr -d '\r\n[:space:]')
+          
+          CMD="python main.py"
+          if [ -n "${{ inputs.max_episodes }}" ]; then
+            CMD="$CMD --max-episodes ${{ inputs.max_episodes }}"
+          fi
+          echo "🚀 Thực thi lệnh: $CMD"
+          eval "$CMD"
 
       - name: ☁️ Xuất Gói Xét Duyệt sang Cloud Storage riêng tư (Rclone)
         if: always()

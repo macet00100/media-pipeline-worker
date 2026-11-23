@@ -36,6 +36,12 @@ class GeminiClient:
 
         last_error = None
         for key_idx, key in enumerate(api_keys):
+            key = key.strip()
+            if not key:
+                continue
+            # Đồng bộ key sạch (đã loại bỏ \r\n) vào env để google-genai SDK không đọc nhầm bản thô
+            os.environ["GEMINI_API_KEY"] = key
+            os.environ["GOOGLE_API_KEY"] = key
             try:
                 client = genai.Client(
                     api_key=key,
