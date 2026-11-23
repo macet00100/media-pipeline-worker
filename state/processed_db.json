@@ -7,6 +7,11 @@
       "title": "被认回时真千金已考出小山村",
       "reason": "name 'subprocess' is not defined",
       "failed_at": "2026-11-23T01:14:45.305299"
+    },
+    "lz_164941": {
+      "title": "双姝宫阑梦",
+      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
+      "failed_at": "2026-11-23T07:20:23.477429"
     }
   },
   "pending_review": {
@@ -30,5 +35,5 @@
     }
   },
   "completed": {},
-  "last_updated": "2026-11-23T07:09:21.929587"
+  "last_updated": "2026-11-23T07:20:23.477459"
 }
