@@ -73,6 +73,11 @@ class Downloader:
         try:
             text = cls._fetch_text(m3u8_url, timeout=12)
             if text:
+                # Đảm bảo nội dung tải về là M3U8 hợp lệ, không phải trang lỗi HTML (403/404 block page)
+                if "<!DOCTYPE" in text or "<html" in text or "<body" in text or not text.strip().startswith("#"):
+                    print(f"[Downloader] Phản hồi không phải M3U8 hợp lệ (HTML error page): {m3u8_url}")
+                    return m3u8_url
+
                 base = m3u8_url.rsplit("/", 1)[0]
                 query = urllib.parse.urlparse(m3u8_url).query
                 for line in text.splitlines():
@@ -99,8 +104,8 @@ class Downloader:
         """
         try:
             content = cls._fetch_text(stream_url, timeout=12)
-            if not content:
-                print(f"[Downloader] Không tải được manifest stream {stream_url}. Sử dụng luồng trực tiếp.")
+            if not content or "<!DOCTYPE" in content or "<html" in content or not content.strip().startswith("#"):
+                print(f"[Downloader] Không tải được manifest hợp lệ từ stream {stream_url}. Sử dụng luồng trực tiếp.")
                 return stream_url
 
             base_url = stream_url.rsplit("/", 1)[0]
@@ -233,12 +238,14 @@ class Downloader:
 
         cmd = ["ffmpeg", "-y"]
 
-        # Luôn truyền proxy và headers HTTP để FFmpeg tải các phân đoạn .ts an toàn không bị chặn
-        proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
-        if proxy and proxy.startswith("http://"):
-            cmd.extend(["-http_proxy", proxy])
-        if headers_str.strip():
-            cmd.extend(["-headers", headers_str, "-rw_timeout", "15000000"])
+        # Chỉ truyền các tùy chọn giao thức HTTP (-headers, -rw_timeout) khi input là URL trực tiếp (http/https).
+        # Khi input là file manifest m3u8 cục bộ, FFmpeg trên Linux sẽ báo lỗi 'Option headers not found'.
+        if stream_url.startswith("http://") or stream_url.startswith("https://"):
+            proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+            if proxy and proxy.startswith("http://"):
+                cmd.extend(["-http_proxy", proxy])
+            if headers_str.strip():
+                cmd.extend(["-headers", headers_str, "-rw_timeout", "15000000"])
 
         cmd.extend([
             "-allowed_extensions", "ALL",
