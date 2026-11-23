@@ -133,13 +133,16 @@ jobs:
           
           echo "=== KIỂM TRA KẾT NỐI M3U8 TỪ RUNNER ==="
           python -c "import socket; print('DNS IPs:', socket.getaddrinfo('v.lzcdn27.com', 443))" || true
-          echo "--- BODY CỦA 404 ---"
-          curl -s "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" || true
-          echo "--- THỬ VỚI X-FORWARDED-FOR ---"
-          curl -s -I -H "X-Forwarded-For: 113.161.72.10" -H "Client-IP: 113.161.72.10" "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
-          echo "--- THỬ VỚI REFERER TỪ WEB CHÍNH THỨC ---"
-          curl -s -I -H "Referer: https://lzizy.net/" "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
-          curl -s -I -H "Referer: https://www.lzizy9.com/" "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
+          echo "--- 1. Thử X-Forwarded-For VN ---"
+          curl -s -m 5 -I -H "X-Forwarded-For: 113.161.72.10" -H "Client-IP: 113.161.72.10" "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
+          echo "--- 2. Thử Referer lzizy.net ---"
+          curl -s -m 5 -I -H "Referer: https://lzizy.net/" "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
+          echo "--- 3. Thử Referer v.lzcdn27.com + User-Agent ---"
+          curl -s -m 5 -I -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0" -H "Referer: https://v.lzcdn27.com/" "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
+          echo "--- 4. Thử Origin ---"
+          curl -s -m 5 -I -H "Origin: https://lzizy.net" "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
+          echo "--- 5. Body preview (5s timeout) ---"
+          curl -s -m 5 "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 10 || true
           
           CMD="python main.py"
           if [ -n "${{ inputs.max_episodes }}" ]; then

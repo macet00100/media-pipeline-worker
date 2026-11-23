@@ -168,6 +168,7 @@ class Downloader:
         if stream_url.startswith("http://") or stream_url.startswith("https://"):
             cmd.extend(["-headers", headers_str])
         cmd.extend([
+            "-timeout", "15000000",
             "-allowed_extensions", "ALL",
             "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
             "-i", stream_url,
@@ -178,7 +179,7 @@ class Downloader:
         ])
 
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000000:
                 elapsed = round(time.time() - t0, 1)
                 size_mb = round(os.path.getsize(output_path) / (1024 * 1024), 1)
