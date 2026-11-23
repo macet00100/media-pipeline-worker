@@ -3,6 +3,7 @@ import re
 import time
 import urllib.request
 import urllib.parse
+import urllib.error
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
@@ -11,8 +12,78 @@ from config.settings import Settings
 class Downloader:
     """
     Tải video M3U8/MP4 thông minh tích hợp Lớp lọc quảng cáo Lớp 1
-    ngay trên M3U8 Manifest (#EXT-X-DISCONTINUITY).
+    ngay trên M3U8 Manifest (#EXT-X-DISCONTINUITY) và tự động failover
+    sang Proxy Châu Á sạch khi gặp rào cản IP datacenter.
     """
+
+    _cached_proxy: Optional[str] = None
+
+    @classmethod
+    def get_proxy(cls, force_refresh: bool = False) -> Optional[str]:
+        """Tự động tìm kiếm hoặc tái sử dụng proxy Châu Á (SG, HK, JP, VN) để vượt qua geo-block."""
+        if cls._cached_proxy and not force_refresh:
+            return cls._cached_proxy
+
+        env_proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+        if env_proxy and env_proxy.startswith("http://"):
+            cls._cached_proxy = env_proxy
+            return env_proxy
+
+        print("[Downloader] Đang quét nhanh proxy châu Á (SG, HK, JP) để vượt rào cản datacenter IP...")
+        try:
+            url = "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=2500&country=SG,HK,JP&ssl=all&anonymity=all"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=4) as r:
+                proxies = r.read().decode().strip().splitlines()
+            test_target = "https://v.lzcdn27.com/20261103/21183_19a20c74/index.m3u8"
+            for p in proxies[:15]:
+                p = p.strip()
+                if not p:
+                    continue
+                ph = urllib.request.ProxyHandler({"http": f"http://{p}", "https": f"http://{p}"})
+                opener = urllib.request.build_opener(ph)
+                treq = urllib.request.Request(test_target, headers={"User-Agent": "Mozilla/5.0"})
+                try:
+                    with opener.open(treq, timeout=2.5) as res:
+                        if res.status == 200:
+                            print(f"[Downloader] ✅ Đã kích hoạt proxy châu Á thành công: {p}")
+                            cls._cached_proxy = f"http://{p}"
+                            os.environ["http_proxy"] = cls._cached_proxy
+                            os.environ["https_proxy"] = cls._cached_proxy
+                            return cls._cached_proxy
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"[Downloader] Không lấy được danh sách proxy: {e}")
+        return None
+
+    @classmethod
+    def _open_url(cls, req: urllib.request.Request, timeout: int = 12):
+        """Thực thi request với cơ chế tự động thử qua proxy nếu gặp 403 hoặc 404."""
+        try:
+            proxy = cls.get_proxy()
+            if proxy:
+                ph = urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+                opener = urllib.request.build_opener(ph)
+                return opener.open(req, timeout=timeout)
+            else:
+                return urllib.request.urlopen(req, timeout=timeout)
+        except urllib.error.HTTPError as he:
+            if he.code in (403, 404):
+                print(f"[Downloader] Gặp HTTP {he.code}. Thử kích hoạt proxy châu Á...")
+                proxy = cls.get_proxy(force_refresh=True)
+                if proxy:
+                    ph = urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+                    opener = urllib.request.build_opener(ph)
+                    return opener.open(req, timeout=timeout)
+            raise
+        except Exception:
+            proxy = cls.get_proxy(force_refresh=True)
+            if proxy:
+                ph = urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+                opener = urllib.request.build_opener(ph)
+                return opener.open(req, timeout=timeout)
+            raise
 
     @classmethod
     def resolve_stream_url(cls, m3u8_url: str) -> str:
@@ -51,7 +122,7 @@ class Downloader:
             if ref:
                 headers["Referer"] = ref
             req = urllib.request.Request(m3u8_url, headers=headers)
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with cls._open_url(req, timeout=12) as resp:
                 text = resp.read().decode("utf-8", errors="ignore")
                 base = m3u8_url.rsplit("/", 1)[0]
                 query = urllib.parse.urlparse(m3u8_url).query
@@ -87,7 +158,7 @@ class Downloader:
             if ref:
                 headers["Referer"] = ref
             req = urllib.request.Request(stream_url, headers=headers)
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with cls._open_url(req, timeout=12) as resp:
                 content = resp.read().decode("utf-8", errors="ignore")
 
             base_url = stream_url.rsplit("/", 1)[0]
@@ -229,10 +300,10 @@ class Downloader:
         cmd = ["ffmpeg", "-y"]
 
         # Chỉ truyền các tùy chọn giao thức HTTP khi input là URL trực tiếp
+        active_proxy = cls.get_proxy()
         if stream_url.startswith("http://") or stream_url.startswith("https://"):
-            proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
-            if proxy and proxy.startswith("http://"):
-                cmd.extend(["-http_proxy", proxy])
+            if active_proxy and active_proxy.startswith("http://"):
+                cmd.extend(["-http_proxy", active_proxy])
             cmd.extend(["-headers", headers_str, "-rw_timeout", "15000000"])
 
         cmd.extend([
@@ -252,9 +323,35 @@ class Downloader:
                 size_mb = round(os.path.getsize(output_path) / (1024 * 1024), 1)
                 print(f"[Downloader] Tải thành công ({size_mb} MB trong {elapsed}s)")
                 return True
-            else:
-                print(f"[Downloader] FFmpeg tải thất bại: {res.stderr[-250:]}")
-                return False
+
+            # Nếu thất bại do chặn IP (403/404), tự động kích hoạt Proxy Châu Á và thử lại
+            if res.returncode != 0 and any(err in res.stderr for err in ["403", "404", "Forbidden", "access denied"]):
+                print(f"[Downloader] FFmpeg gặp chặn IP ({res.stderr[-100:].strip()}). Đang thử lại với Proxy Châu Á mới...")
+                fresh_proxy = cls.get_proxy(force_refresh=True)
+                if fresh_proxy:
+                    retry_cmd = ["ffmpeg", "-y"]
+                    if stream_url.startswith("http://") or stream_url.startswith("https://"):
+                        retry_cmd.extend(["-http_proxy", fresh_proxy, "-headers", headers_str, "-rw_timeout", "15000000"])
+                    retry_cmd.extend([
+                        "-allowed_extensions", "ALL",
+                        "-protocol_whitelist", "file,http,https,tcp,tls,crypto,httpproxy,data",
+                        "-i", stream_url,
+                        "-t", str(max_seconds),
+                        "-c", "copy",
+                        "-bsf:a", "aac_adtstoasc",
+                        output_path
+                    ])
+                    retry_res = subprocess.run(retry_cmd, capture_output=True, text=True, timeout=300)
+                    if retry_res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000000:
+                        elapsed = round(time.time() - t0, 1)
+                        size_mb = round(os.path.getsize(output_path) / (1024 * 1024), 1)
+                        print(f"[Downloader] Tải lại thành công qua Proxy ({size_mb} MB trong {elapsed}s)")
+                        return True
+                    else:
+                        print(f"[Downloader] Tải lại qua Proxy thất bại: {retry_res.stderr[-200:]}")
+
+            print(f"[Downloader] FFmpeg tải thất bại: {res.stderr[-250:]}")
+            return False
         except Exception as e:
             print(f"[Downloader] Ngoại lệ khi tải m3u8: {e}")
             return False

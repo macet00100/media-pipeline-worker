@@ -92,15 +92,6 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: 🌐 Kết nối Cloudflare WARP (Vượt chặn IP Datacenter)
-        uses: fscarmen/warp-on-actions@v1.4
-
-      - name: 🔍 Kiểm tra IP & Kết nối CDN sau khi kích hoạt WARP
-        run: |
-          echo "Public IP: $(curl -s https://ifconfig.me || true)"
-          curl -s -o /dev/null -w "Liangzi CDN HTTP: %{http_code}\n" -m 8 -A "Mozilla/5.0" "https://v.lzcdn27.com/20261103/21183_19a20c74/index.m3u8" || true
-          curl -s -o /dev/null -w "Phi Phàm CDN HTTP: %{http_code}\n" -m 8 -A "Mozilla/5.0" -H "Referer: https://ffzy1.tv/" "https://vip.ffzy-play9.com/20260818/47544_6fb7c530/index.m3u8" || true
-
       - name: ⚙️ Cài đặt FFmpeg, Rclone & Font chữ tiếng Việt
         run: |
           sudo apt-get update -qq
