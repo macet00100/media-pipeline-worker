@@ -42,14 +42,12 @@ class Downloader:
             return m3u8_url.replace("/index.m3u8", "/2000k/hls/index.m3u8")
 
         try:
-            parsed = urllib.parse.urlparse(m3u8_url)
-            ref = "https://ffzy1.tv/" if "ffzy" in m3u8_url else (f"{parsed.scheme}://{parsed.netloc}/" if parsed.netloc else "")
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                "Accept": "*/*"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"
             }
-            if ref:
-                headers["Referer"] = ref
+            if "ffzy" in m3u8_url:
+                headers["Referer"] = "https://ffzy1.tv/"
+
             req = urllib.request.Request(m3u8_url, headers=headers)
             with urllib.request.urlopen(req, timeout=12) as resp:
                 text = resp.read().decode("utf-8", errors="ignore")
@@ -78,14 +76,12 @@ class Downloader:
         sau thẻ #EXT-X-DISCONTINUITY có thời lượng bất thường (5s - 20s) hoặc domain lạ.
         """
         try:
-            parsed = urllib.parse.urlparse(stream_url)
-            ref = "https://ffzy1.tv/" if "ffzy" in stream_url else (f"{parsed.scheme}://{parsed.netloc}/" if parsed.netloc else "")
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                "Accept": "*/*"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"
             }
-            if ref:
-                headers["Referer"] = ref
+            if "ffzy" in stream_url:
+                headers["Referer"] = "https://ffzy1.tv/"
+
             req = urllib.request.Request(stream_url, headers=headers)
             with urllib.request.urlopen(req, timeout=12) as resp:
                 content = resp.read().decode("utf-8", errors="ignore")
@@ -200,29 +196,21 @@ class Downloader:
         
         # Luôn cung cấp User-Agent trình duyệt thật để tránh bị CDN chặn
         headers_list = [
-            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"
         ]
-        if stream_url.startswith("http://") or stream_url.startswith("https://"):
-            parsed = urllib.parse.urlparse(stream_url)
-            if "ffzy" in stream_url:
-                headers_list.append("Referer: https://ffzy1.tv/")
-            elif parsed.netloc:
-                headers_list.append(f"Referer: {parsed.scheme}://{parsed.netloc}/")
-        elif os.path.exists(stream_url):
+        is_ffzy = "ffzy" in stream_url
+        if not is_ffzy and os.path.exists(stream_url):
             try:
                 with open(stream_url, "r", encoding="utf-8", errors="ignore") as f:
                     for l in f:
-                        l = l.strip()
-                        if l.startswith("http://") or l.startswith("https://"):
-                            if "ffzy" in l:
-                                headers_list.append("Referer: https://ffzy1.tv/")
-                            else:
-                                parsed = urllib.parse.urlparse(l)
-                                if parsed.netloc:
-                                    headers_list.append(f"Referer: {parsed.scheme}://{parsed.netloc}/")
+                        if "ffzy" in l:
+                            is_ffzy = True
                             break
             except Exception:
                 pass
+
+        if is_ffzy:
+            headers_list.append("Referer: https://ffzy1.tv/")
 
         headers_str = "\r\n".join(headers_list) + "\r\n"
 
