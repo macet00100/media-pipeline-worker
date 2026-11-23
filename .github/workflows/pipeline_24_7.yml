@@ -27,7 +27,7 @@ on:
       max_episodes:
         description: 'Giới hạn số tập xử lý cho mỗi phim (để test nhanh, để trống nếu làm trọn bộ)'
         required: false
-        default: ''
+        default: '2'
 
 # KHÓA CONCURRENCY: Tuyệt đối không cho 2 job chạy song song đè dữ liệu
 concurrency:
@@ -48,7 +48,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || vars.ENABLE_SCHEDULE == 'true'
 
     # GIỚI HẠN THỜI GIAN: Không bao giờ chạm trần timeout 6 giờ của GitHub
-    timeout-minutes: 60
+    timeout-minutes: 180
 
     steps:
       - name: 📥 Tải mã nguồn dự án
