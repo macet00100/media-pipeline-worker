@@ -141,12 +141,16 @@ jobs:
           rclone copy output/ "${RCLONE_REMOTE}/${RUN_NUMBER}/" --config ~/.config/rclone/rclone.conf || echo "⚠️ Cảnh báo: Rclone sync không thành công."
 
       - name: 📢 Gửi báo cáo Gói Xét Duyệt qua Telegram
-        if: always() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: always()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_NUMBER: ${{ github.run_number }}
         run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "ℹ️ Chưa cấu hình Telegram bot token hoặc chat ID, bỏ qua thông báo."
+            exit 0
+          fi
           python -c "
           import os, glob, requests
           token = os.environ.get('TELEGRAM_BOT_TOKEN')
