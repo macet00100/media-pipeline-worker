@@ -131,6 +131,12 @@ jobs:
           export GEMINI_API_KEY=$(echo -n "$GEMINI_API_KEY" | tr -d '\r\n[:space:]')
           export GOOGLE_API_KEY=$(echo -n "$GOOGLE_API_KEY" | tr -d '\r\n[:space:]')
           
+          echo "=== KIỂM TRA KẾT NỐI M3U8 TỪ RUNNER ==="
+          python -c "import socket; print('DNS IPs:', socket.getaddrinfo('v.lzcdn27.com', 443))" || true
+          curl -s -I "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
+          curl -s -I -4 "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
+          curl -s -I -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0" -H "Referer: https://v.lzcdn27.com/" "https://v.lzcdn27.com/20261122/22447_a2ba76b1/index.m3u8" | head -n 5 || true
+          
           CMD="python main.py"
           if [ -n "${{ inputs.max_episodes }}" ]; then
             CMD="$CMD --max-episodes ${{ inputs.max_episodes }}"
