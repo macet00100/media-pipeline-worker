@@ -162,13 +162,13 @@ class CMSClient:
         if not groups:
             return []
 
-        # Ưu tiên nhóm share URL vì có sign token chống 404 trên CDN
-        for g in groups:
-            if any("/share/" in u for u in g):
-                return g
-
-        # Tiếp theo ưu tiên nhóm direct m3u8
+        # Ưu tiên nhóm direct m3u8 (luồng video trực tiếp, sạch, tốc độ cao)
         for g in groups:
             if any("/202" in u or "index.m3u8" in u or "mixed" in u for u in g):
+                return g
+
+        # Tiếp theo mới tới nhóm share URL
+        for g in groups:
+            if any("/share/" in u for u in g):
                 return g
         return groups[0]

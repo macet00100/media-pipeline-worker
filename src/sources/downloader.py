@@ -34,6 +34,9 @@ class Downloader:
                         print(f"[Downloader] Phân giải thành công link có chữ ký: {m3u8_url}")
             except Exception as e:
                 print(f"[Downloader] Lỗi phân giải share page {m3u8_url}: {e}")
+            if "/share/" in m3u8_url:
+                print(f"[Downloader] Link share không trích xuất được stream m3u8: {m3u8_url}")
+                return ""
 
         if "/lzv" in m3u8_url and m3u8_url.endswith("/index.m3u8"):
             return m3u8_url.replace("/index.m3u8", "/2000k/hls/index.m3u8")
@@ -170,6 +173,9 @@ class Downloader:
         tmp_dir.mkdir(parents=True, exist_ok=True)
         tmp_manifest = str(tmp_dir / f"clean_ep_{int(time.time()*1000)}.m3u8")
         raw_stream = cls.resolve_stream_url(m3u8_url)
+        if not raw_stream:
+            print(f"[Downloader] Không thể phân giải URL stream: {m3u8_url}")
+            return False
         clean_stream = cls.sanitize_m3u8_manifest(raw_stream, tmp_manifest)
         ok = cls.download_segment_to_mp4(clean_stream, output_path, max_seconds=max_duration_sec)
         if os.path.exists(tmp_manifest):
@@ -207,17 +213,16 @@ class Downloader:
 
         cmd = ["ffmpeg", "-y"]
 
-        # Nếu có HTTP proxy trong môi trường, chỉ định trực tiếp cho FFmpeg
-        proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
-        if proxy and proxy.startswith("http://"):
-            cmd.extend(["-http_proxy", proxy])
-
-        cmd.extend(["-headers", headers_str])
+        # Chỉ truyền các tùy chọn giao thức HTTP khi input là URL trực tiếp
         if stream_url.startswith("http://") or stream_url.startswith("https://"):
-            cmd.extend(["-rw_timeout", "15000000"])
+            proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+            if proxy and proxy.startswith("http://"):
+                cmd.extend(["-http_proxy", proxy])
+            cmd.extend(["-headers", headers_str, "-rw_timeout", "15000000"])
+
         cmd.extend([
             "-allowed_extensions", "ALL",
-            "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
+            "-protocol_whitelist", "file,http,https,tcp,tls,crypto,httpproxy,data",
             "-i", stream_url,
             "-t", str(max_seconds),
             "-c", "copy",
