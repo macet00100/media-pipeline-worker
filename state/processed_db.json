@@ -2,23 +2,7 @@
   "processed_ids": [
     "lz_167423"
   ],
-  "failed_ids": {
-    "lz_164941": {
-      "title": "双姝宫阑梦",
-      "reason": "Tải tập #1 thất bại từ: https://v.lzcdn27.com/20261103/21183_19a20c74/index.m3u8",
-      "failed_at": "2026-11-23T10:51:12.653799"
-    },
-    "ff_99188": {
-      "title": "在雪融化之前",
-      "reason": "Tải tập #1 thất bại từ: https://vod.ffzy-plays50.com/20260829/71263_0fa82e56/index.m3u8",
-      "failed_at": "2026-11-23T10:51:18.650812"
-    },
-    "ff_99076": {
-      "title": "穿越侍郎千金，上朝心声全网公开第二季",
-      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20260818/47454_dedf106c/index.m3u8",
-      "failed_at": "2026-11-23T10:51:24.227941"
-    }
-  },
+  "failed_ids": {},
   "pending_review": {
     "lz_167423": {
       "title": "Tiểu Thư Thật Đã Rời Núi",
