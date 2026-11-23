@@ -55,7 +55,7 @@
         "https://v.lfthirtytwo.com/20261030/11512_fd0f9413/index.m3u8",
         "https://v.lfthirtytwo.com/20261030/11513_59d31d3c/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-23T18:00:00"
     },
     {
@@ -97,7 +97,7 @@
         "https://v.lzcdn27.com/20261103/21189_749f23aa/index.m3u8",
         "https://v.lzcdn27.com/20261103/21188_28230075/index.m3u8"
       ],
-      "status": "queued",
+      "status": "processed",
       "queued_at": "2026-11-23T16:25:56.771531"
     },
     {
@@ -642,5 +642,5 @@
     }
   ],
   "total_items": 7,
-  "last_updated": "2026-11-23T18:26:20.806531"
+  "last_updated": "2026-11-23T22:06:45.135274"
 }

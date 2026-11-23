@@ -25,9 +25,9 @@ on:
         required: false
         default: '1'
       max_episodes:
-        description: 'Giới hạn số tập xử lý cho mỗi phim (để test nhanh, để trống nếu làm trọn bộ)'
+        description: 'Giới hạn số tập xử lý cho mỗi phim (để trống để tự động làm trọn bộ 100%)'
         required: false
-        default: '2'
+        default: ''
 
 # KHÓA CONCURRENCY: Tuyệt đối không cho 2 job chạy song song đè dữ liệu
 concurrency:
@@ -47,8 +47,8 @@ jobs:
     # Giúp bật/tắt chế độ tự động 3 video/ngày ngay trên giao diện GitHub Settings mà không cần sửa code.
     if: github.event_name == 'workflow_dispatch' || vars.ENABLE_SCHEDULE == 'true'
 
-    # GIỚI HẠN THỜI GIAN: Không bao giờ chạm trần timeout 6 giờ của GitHub
-    timeout-minutes: 180
+    # GIỚI HẠN THỜI GIAN: Đảm bảo đoản kịch trọn bộ 60-100 tập render hoàn tất không bị ngắt ngang
+    timeout-minutes: 240
 
     steps:
       - name: 📥 Tải mã nguồn dự án
@@ -233,12 +233,12 @@ jobs:
               print(f'⚠️ Gửi Telegram thất bại: {e}')
           " || true
 
-      - name: 💾 Đồng bộ cơ sở dữ liệu lịch sử (Chỉ commit processed_db.json)
+      - name: 💾 Đồng bộ cơ sở dữ liệu lịch sử (Chỉ commit processed_db.json & production_queue.json)
         if: always()
         run: |
           git config --global user.name "CoolMeoBot"
           git config --global user.email "bot@coolmeophim.local"
-          python -c "from src.state.state_manager import StateManager; StateManager.sync_to_git('chore(state): auto update processed_db [skip ci]')" || true
+          python -c "from src.state.state_manager import StateManager; StateManager.sync_to_git('chore(state): auto update state files [skip ci]')" || true
 
       - name: 🧹 Dọn dẹp tuyệt đối thư mục tạm và output (Zero Data Leak trên Public Runner)
         if: always()
