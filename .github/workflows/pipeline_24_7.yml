@@ -134,10 +134,7 @@ jobs:
           PREFERRED_SOURCE: ${{ inputs.force_source || 'lz' }}
           http_proxy: "http://127.0.0.1:9080"
           https_proxy: "http://127.0.0.1:9080"
-          HTTP_PROXY: "http://127.0.0.1:9080"
-          HTTPS_PROXY: "http://127.0.0.1:9080"
           no_proxy: "localhost,127.0.0.1,googleapis.com,generativelanguage.googleapis.com,telegram.org,api.telegram.org,github.com"
-          NO_PROXY: "localhost,127.0.0.1,googleapis.com,generativelanguage.googleapis.com,telegram.org,api.telegram.org,github.com"
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
@@ -156,6 +153,9 @@ jobs:
           export GEMINI_API_KEYS=$(echo -n "$GEMINI_API_KEYS" | tr -d '\r\n[:space:]')
           export GEMINI_API_KEY=$(echo -n "$GEMINI_API_KEY" | tr -d '\r\n[:space:]')
           export GOOGLE_API_KEY=$(echo -n "$GOOGLE_API_KEY" | tr -d '\r\n[:space:]')
+          export HTTP_PROXY="$http_proxy"
+          export HTTPS_PROXY="$https_proxy"
+          export NO_PROXY="$no_proxy"
           
           echo "=== 🌐 KIỂM TRA MẠNG RUNNER VÀ KẾT NỐI TỚI CÁC CDN ==="
           echo "Runner Direct Public IPv4: $(curl -4 --noproxy '*' -s -m 5 https://api.ipify.org || echo 'N/A')"
