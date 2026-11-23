@@ -9,6 +9,31 @@
       "title": "非常营救",
       "reason": "Tải tập #1 thất bại từ: https://v.lzcdn27.com/20261021/19753_d0f36985/index.m3u8",
       "failed_at": "2026-11-23T12:08:07.514543"
+    },
+    "lz_161963": {
+      "title": "嫁金钗",
+      "reason": "Tải tập #1 thất bại từ: https://v.lzcdn27.com/20261016/19360_5c14cbf9/index.m3u8",
+      "failed_at": "2026-11-23T22:07:43.229196"
+    },
+    "ff_99188": {
+      "title": "在雪融化之前",
+      "reason": "Tải tập #8 thất bại từ: https://vod.ffzy-plays50.com/20260829/71270_2df95a36/index.m3u8",
+      "failed_at": "2026-11-23T22:26:22.466962"
+    },
+    "ff_99076": {
+      "title": "穿越侍郎千金，上朝心声全网公开第二季",
+      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20260818/47454_dedf106c/index.m3u8",
+      "failed_at": "2026-11-23T22:26:32.363325"
+    },
+    "ff_99077": {
+      "title": "穿越侍郎千金，上朝心声全网公开第三季",
+      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20260818/47608_13e388b2/index.m3u8",
+      "failed_at": "2026-11-23T22:26:42.236831"
+    },
+    "ff_99071": {
+      "title": "篮神重生顶流女友有点甜",
+      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20260818/47820_44c6cc91/index.m3u8",
+      "failed_at": "2026-11-23T22:26:51.685224"
     }
   },
   "pending_review": {
@@ -49,5 +74,5 @@
       "completed_at": "2026-11-24T00:56:31.269784"
     }
   },
-  "last_updated": "2026-11-24T00:56:31.269784"
+  "last_updated": "2026-11-23T22:26:51.685268"
 }

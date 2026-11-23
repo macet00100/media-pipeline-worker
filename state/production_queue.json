@@ -197,7 +197,7 @@
         "https://vod.ffzy-plays50.com/20260829/71332_8ee70d14/index.m3u8",
         "https://vod.ffzy-plays50.com/20260829/71336_2f40f629/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-23T16:25:56.771531"
     },
     {
@@ -376,7 +376,7 @@
         "https://vip.ffzy-play9.com/20260818/47609_f42c61b0/index.m3u8",
         "https://vip.ffzy-play9.com/20260818/47606_10f7bc59/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-23T16:25:56.771531"
     },
     {
@@ -432,7 +432,7 @@
         "https://v.lzcdn27.com/20261103/21217_4cf667a8/index.m3u8",
         "https://v.lzcdn27.com/20261103/21218_d3c893bf/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-23T18:26:20.803534"
     },
     {
@@ -580,7 +580,7 @@
         "https://vip.ffzy-play9.com/20260818/47729_af773c83/index.m3u8",
         "https://vip.ffzy-play9.com/20260818/47728_ecf0c1ef/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-23T18:26:20.803534"
     },
     {
@@ -637,10 +637,10 @@
         "https://vip.ffzy-play9.com/20260818/47850_8f4fcb82/index.m3u8",
         "https://vip.ffzy-play9.com/20260818/47849_e11ee596/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-23T18:26:20.803534"
     }
   ],
   "total_items": 7,
-  "last_updated": "2026-11-23T22:06:45.135274"
+  "last_updated": "2026-11-23T22:26:51.686015"
 }
