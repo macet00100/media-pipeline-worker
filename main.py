@@ -690,14 +690,25 @@ def main():
     else:
         q_file = Path("state/production_queue.json")
         if q_file.exists():
-            with open(q_file, "r", encoding="utf-8") as f:
-                q_data = json.load(f)
-                candidates_to_try = [m for m in q_data.get("queue", []) if m.get("status") == "queued"]
+            try:
+                with open(q_file, "r", encoding="utf-8") as f:
+                    q_data = json.load(f)
+                    ignored = StateManager.get_ignored_ids()
+                    candidates_to_try = [
+                        m for m in q_data.get("queue", [])
+                        if m.get("status") == "queued" and m.get("id") not in ignored
+                    ]
+            except Exception as e:
+                print(f"[MAIN] Lỗi đọc queue file: {e}")
 
         if not candidates_to_try:
-            print("[MAIN] Hàng chờ trống. Đang quét và tuyển chọn Top 3 phim hay nhất hôm nay...")
+            print("[MAIN] Hàng chờ trống (hoặc ứng viên đã xử lý). Đang quét và tuyển chọn Top 3 phim mới hôm nay...")
             curation_res = MovieCurator.run_curation_pipeline()
-            candidates_to_try = curation_res.get("selected", [])
+            ignored = StateManager.get_ignored_ids()
+            candidates_to_try = [
+                m for m in curation_res.get("selected", [])
+                if m.get("id") not in ignored
+            ]
 
     if not candidates_to_try:
         print("[MAIN] Không tìm thấy phim nào phù hợp để sản xuất.")
