@@ -2,73 +2,7 @@
   "processed_ids": [
     "lz_167423"
   ],
-  "failed_ids": {
-    "lz_167423": {
-      "title": "被认回时真千金已考出小山村",
-      "reason": "name 'subprocess' is not defined",
-      "failed_at": "2026-11-23T01:14:45.305299"
-    },
-    "lz_164941": {
-      "title": "双姝宫阑梦",
-      "reason": "Tải tập #1 thất bại từ: https://v.lzcdn27.com/20261103/21183_19a20c74/index.m3u8",
-      "failed_at": "2026-11-23T07:35:00.939504"
-    },
-    "ff_99188": {
-      "title": "在雪融化之前",
-      "reason": "Tải tập #1 thất bại từ: https://vod.ffzy-plays50.com/20260829/71263_0fa82e56/index.m3u8",
-      "failed_at": "2026-11-23T07:44:33.552212"
-    },
-    "ff_99076": {
-      "title": "穿越侍郎千金，上朝心声全网公开第二季",
-      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20260818/47454_dedf106c/index.m3u8",
-      "failed_at": "2026-11-23T07:44:38.795318"
-    },
-    "lz_162781": {
-      "title": "非常营救",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
-      "failed_at": "2026-11-23T07:47:00.772819"
-    },
-    "ff_99077": {
-      "title": "穿越侍郎千金，上朝心声全网公开第三季",
-      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20260818/47608_13e388b2/index.m3u8",
-      "failed_at": "2026-11-23T07:47:06.443227"
-    },
-    "ff_99071": {
-      "title": "篮神重生顶流女友有点甜",
-      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20260818/47820_44c6cc91/index.m3u8",
-      "failed_at": "2026-11-23T07:47:11.602112"
-    },
-    "lz_161963": {
-      "title": "嫁金钗",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'service': 'generativelanguage.googleapis.com', 'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent'}}]}}",
-      "failed_at": "2026-11-23T07:49:58.130327"
-    },
-    "ff_99063": {
-      "title": "默默守护顶流女星",
-      "reason": "Tải tập #1 thất bại từ: https://vod.ffzy-plays50.com/20260818/70138_53a9ab5e/index.m3u8",
-      "failed_at": "2026-11-23T07:50:03.602598"
-    },
-    "ff_98623": {
-      "title": "闪婚总裁契约妻",
-      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20260713/45032_49cd1601/index.m3u8",
-      "failed_at": "2026-11-23T07:50:08.665960"
-    },
-    "ff_100490": {
-      "title": "总裁误宠替身甜妻",
-      "reason": "Tải tập #1 thất bại từ: https://vod.ffzy-plays50.com/20261121/76339_9a0e0e49/index.m3u8",
-      "failed_at": "2026-11-23T07:50:13.416244"
-    },
-    "ff_100074": {
-      "title": "我真得控制你了",
-      "reason": "Tải tập #1 thất bại từ: https://vip.ffzy-play9.com/20261027/51635_b91f9a80/index.m3u8",
-      "failed_at": "2026-11-23T07:50:18.190648"
-    },
-    "ff_97699": {
-      "title": "傅先生别追了，大小姐是假的",
-      "reason": "Tải tập #1 thất bại từ: https://vod.ffzy-plays50.com/20260528/67366_66d752d2/index.m3u8",
-      "failed_at": "2026-11-23T07:50:22.958157"
-    }
-  },
+  "failed_ids": {},
   "pending_review": {
     "lz_167423": {
       "title": "Tiểu Thư Thật Đã Rời Núi",
@@ -81,5 +15,5 @@
     }
   },
   "completed": {},
-  "last_updated": "2026-11-23T07:50:22.958186"
+  "last_updated": "2026-11-23T07:53:00.000000"
 }
