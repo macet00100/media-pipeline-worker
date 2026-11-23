@@ -223,177 +223,245 @@ class ThumbnailMaker:
         return title.upper()
 
     @classmethod
+    def get_display_font_path(cls) -> str:
+        """Ưu tiên font Montserrat-BlackItalic hoặc BeVietnamPro-BlackItalic cho tiêu đề display."""
+        candidates = [
+            ASSETS_DIR / "fonts" / "Montserrat-BlackItalic.ttf",
+            ASSETS_DIR / "fonts" / "BeVietnamPro-BlackItalic.ttf",
+            ASSETS_DIR / "fonts" / "BeVietnamPro-ExtraBoldItalic.ttf",
+            ASSETS_DIR / "fonts" / "Oswald-Bold.ttf"
+        ]
+        for c in candidates:
+            if c.exists():
+                return str(c)
+        return Settings.get_font_path()
+
+    @classmethod
+    def parse_layers_from_title(cls, catchy_title: str) -> Dict[str, str]:
+        """Tự động phân tách tiêu đề thành 3 tầng nếu không có sẵn layers từ AI."""
+        clean = cls.clean_catchy_title(catchy_title)
+        words = clean.split()
+        if len(words) <= 2:
+            return {
+                "line1_red_brush": "TRỌN BỘ FULL",
+                "line2_big_yellow": clean,
+                "line3_yellow_block": "KỊCH TÍNH NGHẸT THỞ!"
+            }
+        elif len(words) == 3:
+            return {
+                "line1_red_brush": words[0],
+                "line2_big_yellow": words[1],
+                "line3_yellow_block": words[2] + " ĐỈNH CAO!"
+            }
+        else:
+            mid = (len(words) + 1) // 2
+            return {
+                "line1_red_brush": words[0],
+                "line2_big_yellow": " ".join(words[1:mid]),
+                "line3_yellow_block": " ".join(words[mid:]) + "!"
+            }
+
+    @classmethod
     def render_horizontal_thumbnail(
         cls,
         source_frame_path: str,
         catchy_title: str,
-        output_path: str
+        output_path: str,
+        face_cx_ratio: float = 0.5,
+        layers: Optional[Dict[str, str]] = None,
+        bg_image: Optional[Image.Image] = None
     ) -> str:
         """
         Render Thumbnail Ngang 1280x720 (chuẩn tỷ lệ 16:9).
-        - Nếu nguồn là video dọc (height > width): Áp dụng bố cục YouTube Cinema Split 16:9,
-          giữ 100% trọn vẹn đầu, mắt và biểu cảm diễn viên, TUYỆT ĐỐI KHÔNG CẮT CỤT MẶT.
-        - Nếu nguồn là video ngang: Áp dụng Center-crop chuẩn + bottom gradient.
+        - Nền: Ảnh AI điện ảnh 16:9 (hoặc Cinematic Color Grading fallback).
+        - Bên phải (x=52%..97%): Khối chữ 3 tầng nghiêng +5.5° (bay lên bên phải).
+        - Góc dưới trái: Huy hiệu FULL đỏ viền vàng sang trọng.
+        - Góc trên trái: Avatar tròn viền vàng tinh tế.
         """
         target_w, target_h = 1280, 720
-        src_img = Image.open(source_frame_path).convert("RGBA")
-        sw, sh = src_img.size
-        font_path = Settings.get_font_path()
-        avatar_path = str(ASSETS_DIR / "avatar.png")
+        scale = 2
+        sw, sh = target_w * scale, target_h * scale  # 2560 x 1440
+        max_block_w = int(580 * scale)  # Tối đa 580px tại 1x (1160px tại 2x) trên nửa phải
 
-        if sh > sw:
-            # -------------------------------------------------------------
-            # BỐ CỤC YOUTUBE CINEMA SPLIT 16:9 CHO NGUỒN PHIM DỌC
-            # -------------------------------------------------------------
-            # 1. Lớp nền 1280x720: Phóng ảnh gốc phủ kín 16:9 + GaussianBlur(radius=28) + phủ tối black@0.55
-            scale_bg = max(target_w / sw, target_h / sh)
-            bg_w, bg_h = int(sw * scale_bg), int(sh * scale_bg)
-            bg_scaled = src_img.resize((bg_w, bg_h), Image.Resampling.LANCZOS)
-            bg_x = (bg_w - target_w) // 2
-            bg_y = (bg_h - target_h) // 2
-            bg_cropped = bg_scaled.crop((bg_x, bg_y, bg_x + target_w, bg_y + target_h))
-            bg_blurred = bg_cropped.filter(ImageFilter.GaussianBlur(radius=28))
-            dark_overlay = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 140))
-            final_img = Image.alpha_composite(bg_blurred, dark_overlay)
-
-            # 2. Lớp nhân vật chính: Scale nguyên khung hình dọc vừa khít chiều cao 720px
-            # Làm mờ và tint dải chữ Trung y=780..950 trên ảnh dọc trước khi scale vào 16:9
-            sub_y1 = int(sh * 0.61)
-            sub_y2 = int(sh * 0.74)
-            feather = 25
-            src_clean = src_img.copy()
-            sub_blurred = src_clean.filter(ImageFilter.GaussianBlur(radius=24))
-            tint_layer = Image.new("RGBA", (sw, sh), (0, 0, 0, 115))
-            sub_blurred_tinted = Image.alpha_composite(sub_blurred, tint_layer)
-            sub_mask = Image.new("L", (sw, sh), 0)
-            s_draw = ImageDraw.Draw(sub_mask)
-            for cur_y in range(sub_y1, sub_y2):
-                if cur_y < sub_y1 + feather:
-                    m_alpha = int(255 * ((cur_y - sub_y1) / float(feather)))
-                elif cur_y > sub_y2 - feather:
-                    m_alpha = int(255 * ((sub_y2 - cur_y) / float(feather)))
-                else:
-                    m_alpha = 255
-                s_draw.line([(0, cur_y), (sw, cur_y)], fill=m_alpha)
-            src_clean.paste(sub_blurred_tinted, (0, 0), sub_mask)
-
-            fg_h = target_h
-            fg_w = int(sw * (fg_h / float(sh)))
-            fg_resized = src_clean.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
-
-            # Feather viền trái để hòa vào nền tối
-            fg_mask = Image.new("L", (fg_w, fg_h), 255)
-            m_draw = ImageDraw.Draw(fg_mask)
-            feather_w = 45
-            for x in range(feather_w):
-                alpha = int(255 * (x / float(feather_w)))
-                m_draw.line([(x, 0), (x, fg_h)], fill=alpha)
-
-            fg_x = target_w - fg_w - 20
-            fg_y = 0
-            final_img.paste(fg_resized, (fg_x, fg_y), mask=fg_mask)
-
-            # 3. Avatar tròn 115x115 + Badge 'REVIEW PHIM' góc trên trái
-            avatar_img = cls.create_circular_avatar(avatar_path, size=115)
-            final_img.paste(avatar_img, (45, 40), mask=avatar_img)
-
-            draw = ImageDraw.Draw(final_img)
-            badge_w, badge_h = 230, 52
-            badge_x, badge_y = 175, 70
-            draw.rounded_rectangle(
-                [(badge_x, badge_y), (badge_x + badge_w, badge_y + badge_h)],
-                radius=14,
-                fill=(210, 25, 25, 245),
-                outline=(255, 215, 0, 255),
-                width=3
-            )
-            try:
-                badge_font = ImageFont.truetype(font_path, 26)
-                draw.text((badge_x + 20, badge_y + 11), "REVIEW PHIM", fill=(255, 255, 255), font=badge_font)
-            except Exception:
-                draw.text((badge_x + 20, badge_y + 11), "REVIEW PHIM", fill=(255, 255, 255))
-
-            # 4. Tiêu đề Tiếng Việt cực lớn ở khoảng trống bên trái (x=50, max_w=740px)
-            clean_title = cls.clean_catchy_title(catchy_title)
-            lines, title_font, font_sz = cls.fit_and_wrap_text(
-                clean_title, font_path, max_width=720, start_font_size=62, min_font_size=38
-            )
-            line_h = font_sz + 14
-            total_text_h = len(lines) * line_h
-            base_y = 260 + max(0, (380 - total_text_h) // 2)
-
-            for l_idx, line in enumerate(lines):
-                bbox = title_font.getbbox(line)
-                tw = bbox[2] - bbox[0]
-                tx = 50
-                ty = base_y + l_idx * line_h
-                for dx in range(-5, 6):
-                    for dy in range(-5, 6):
-                        draw.text((tx + dx, ty + dy), line, fill=(0, 0, 0, 255), font=title_font)
-                draw.text((tx, ty), line, fill=(255, 230, 10, 255), font=title_font)
-
+        # 1. Chuẩn bị ảnh nền 2560x1440
+        if bg_image:
+            final_bg = bg_image.convert("RGBA").resize((sw, sh), Image.Resampling.LANCZOS)
         else:
-            # -------------------------------------------------------------
-            # BỐ CỤC CHUẨN KHI NGUỒN LÀ PHIM NGANG (16:9)
-            # -------------------------------------------------------------
-            target_ratio = target_w / target_h
-            src_ratio = sw / sh
-            if src_ratio > target_ratio:
-                crop_w = int(sh * target_ratio)
-                crop_h = sh
-                cx = (sw - crop_w) // 2
-                cy = 0
-            else:
-                crop_w = sw
-                crop_h = int(sw / target_ratio)
-                cx = 0
-                cy = (sh - crop_h) // 2
+            final_bg = GeminiClient.generate_cinematic_thumbnail_bg(
+                story_bible={},
+                reference_frame_path=source_frame_path,
+                aspect_ratio="16:9",
+                face_cx_ratio=face_cx_ratio
+            ).resize((sw, sh), Image.Resampling.LANCZOS)
 
-            cropped = src_img.crop((cx, cy, cx + crop_w, cy + crop_h))
-            final_img = cropped.resize((target_w, target_h), Image.Resampling.LANCZOS)
-            final_img = cls.apply_bottom_gradient_mask(final_img, gradient_height_ratio=0.28)
+        font_path = cls.get_display_font_path()
+        avatar_path = str(ASSETS_DIR / "avatar.png")
+        kit_dir = ASSETS_DIR / "thumb_kit"
+        brush_red_path = str(kit_dir / "brush_red.png")
+        brush_yellow_path = str(kit_dir / "brush_yellow.png")
+        badge_full_path = str(kit_dir / "badge_full.png")
 
-            draw = ImageDraw.Draw(final_img)
-            avatar_img = cls.create_circular_avatar(avatar_path, size=115)
-            final_img.paste(avatar_img, (36, 36), mask=avatar_img)
+        # 2. Chuẩn bị nội dung 3 tầng
+        if not layers:
+            layers = cls.parse_layers_from_title(catchy_title)
 
-            badge_w, badge_h = 230, 52
-            badge_x, badge_y = 165, 68
-            draw.rounded_rectangle(
-                [(badge_x, badge_y), (badge_x + badge_w, badge_y + badge_h)],
-                radius=14,
-                fill=(210, 25, 25, 245),
-                outline=(255, 215, 0, 255),
-                width=3
-            )
-            try:
-                badge_font = ImageFont.truetype(font_path, 26)
-                draw.text((badge_x + 20, badge_y + 11), "REVIEW PHIM", fill=(255, 255, 255), font=badge_font)
-            except Exception:
-                draw.text((badge_x + 20, badge_y + 11), "REVIEW PHIM", fill=(255, 255, 255))
+        l1_text = layers.get("line1_red_brush", "TRỌN BỘ FULL").upper().strip()
+        l2_text = layers.get("line2_big_yellow", "VẢ MẶT").upper().strip()
+        l3_text = layers.get("line3_yellow_block", "CẢ NHÀ QUỲ XIN!").upper().strip()
 
-            clean_title = cls.clean_catchy_title(catchy_title)
-            max_title_w = int(target_w * 0.88)
-            lines, title_font, font_sz = cls.fit_and_wrap_text(
-                clean_title, font_path, max_width=max_title_w, start_font_size=56, min_font_size=38
-            )
-            line_h = font_sz + 12
-            total_text_h = len(lines) * line_h
-            base_y = target_h - total_text_h - 26
+        # Canvas tạm chứa khối chữ unrotated
+        bw = max_block_w
+        bh = int(600 * scale)
+        block = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
 
-            for l_idx, line in enumerate(lines):
-                bbox = title_font.getbbox(line)
-                tw = bbox[2] - bbox[0]
-                tx = max(40, (target_w - tw) // 2)
-                ty = base_y + l_idx * line_h
-                for dx in range(-4, 5):
-                    for dy in range(-4, 5):
-                        draw.text((tx + dx, ty + dy), line, fill=(0, 0, 0, 255), font=title_font)
-                draw.text((tx, ty), line, fill=(255, 230, 10, 255), font=title_font)
+        # --- TẦNG 1: Vệt cọ đỏ + chữ trắng in nghiêng ---
+        f1_size = 54 * scale
+        f1 = ImageFont.truetype(font_path, f1_size)
+        b1_bbox = f1.getbbox(l1_text)
+        t1_w = b1_bbox[2] - b1_bbox[0]
+        br1_w = int(t1_w * 1.25) + int(50 * scale)
+        while (br1_w > bw - int(40 * scale)) and f1_size > 28 * scale:
+            f1_size -= 2 * scale
+            f1 = ImageFont.truetype(font_path, f1_size)
+            b1_bbox = f1.getbbox(l1_text)
+            t1_w = b1_bbox[2] - b1_bbox[0]
+            br1_w = int(t1_w * 1.25) + int(50 * scale)
 
-        out_rgb = final_img.convert("RGB")
+        t1_h = b1_bbox[3] - b1_bbox[1]
+        br1_w = max(br1_w, int(350 * scale))
+        br1_h = int(125 * scale)
+
+        if os.path.exists(brush_red_path):
+            brush_red = Image.open(brush_red_path).convert("RGBA").resize((br1_w, br1_h), Image.Resampling.LANCZOS)
+        else:
+            brush_red = Image.new("RGBA", (br1_w, br1_h), (210, 20, 30, 240))
+
+        t1_canvas = Image.new("RGBA", (br1_w, br1_h), (0, 0, 0, 0))
+        t1_canvas.paste(brush_red, (0, 0), brush_red)
+        t1_draw = ImageDraw.Draw(t1_canvas)
+        tx1 = (br1_w - t1_w) // 2 - b1_bbox[0]
+        ty1 = (br1_h - t1_h) // 2 - b1_bbox[1] - int(4 * scale)
+        t1_draw.text((tx1, ty1), l1_text, font=f1, fill=(255, 255, 255, 255),
+                     stroke_width=int(4 * scale), stroke_fill=(15, 15, 15, 255))
+
+        p1_x = max(0, (bw - br1_w) // 2)
+        p1_y = int(20 * scale)
+        block.paste(t1_canvas, (p1_x, p1_y), t1_canvas)
+
+        # --- TẦNG 2: Chữ vàng chanh cực lớn + viền đen siêu dày ---
+        f2_size = 95 * scale
+        f2 = ImageFont.truetype(font_path, f2_size)
+        b2_bbox = f2.getbbox(l2_text)
+        t2_w = b2_bbox[2] - b2_bbox[0]
+        while (t2_w + int(30 * scale) > bw - int(30 * scale)) and f2_size > 45 * scale:
+            f2_size -= 2 * scale
+            f2 = ImageFont.truetype(font_path, f2_size)
+            b2_bbox = f2.getbbox(l2_text)
+            t2_w = b2_bbox[2] - b2_bbox[0]
+        t2_h = b2_bbox[3] - b2_bbox[1]
+
+        t2_canvas = Image.new("RGBA", (bw, t2_h + int(50 * scale)), (0, 0, 0, 0))
+        t2_draw = ImageDraw.Draw(t2_canvas)
+        tx2 = (bw - t2_w) // 2 - b2_bbox[0]
+        ty2 = int(12 * scale) - b2_bbox[1]
+
+        # Đổ bóng đen sâu
+        for s_dx, s_dy in [(int(6 * scale), int(8 * scale)), (int(10 * scale), int(12 * scale))]:
+            t2_draw.text((tx2 + s_dx, ty2 + s_dy), l2_text, font=f2, fill=(0, 0, 0, 180),
+                         stroke_width=int(12 * scale), stroke_fill=(0, 0, 0, 180))
+        # Viền đen dày + màu vàng chanh rực rỡ
+        t2_draw.text((tx2, ty2), l2_text, font=f2, fill=(255, 240, 0, 255),
+                     stroke_width=int(10 * scale), stroke_fill=(10, 10, 10, 255))
+
+        p2_y = p1_y + br1_h - int(10 * scale)
+        block.paste(t2_canvas, (0, p2_y), t2_canvas)
+
+        # --- TẦNG 3: Mảng cọ vàng rực + chữ đỏ thẫm viền trắng ---
+        words3 = l3_text.split()
+        if len(words3) >= 4 or len(l3_text) > 16:
+            mid = (len(words3) + 1) // 2
+            l3_lines = [" ".join(words3[:mid]), " ".join(words3[mid:])]
+        else:
+            l3_lines = [l3_text]
+
+        f3_size = (54 if len(l3_lines) == 1 else 44) * scale
+        f3 = ImageFont.truetype(font_path, f3_size)
+        max_w3 = max([f3.getbbox(ln)[2] - f3.getbbox(ln)[0] for ln in l3_lines])
+        while (max_w3 + int(60 * scale) > bw - int(30 * scale)) and f3_size > 26 * scale:
+            f3_size -= 2 * scale
+            f3 = ImageFont.truetype(font_path, f3_size)
+            max_w3 = max([f3.getbbox(ln)[2] - f3.getbbox(ln)[0] for ln in l3_lines])
+
+        line_h3 = int(f3_size * 1.15)
+        total_h3 = len(l3_lines) * line_h3
+
+        br3_w = min(bw - int(20 * scale), max(int(max_w3 * 1.25) + int(60 * scale), int(420 * scale)))
+        br3_h = int((140 if len(l3_lines) == 1 else 210) * scale)
+
+        if os.path.exists(brush_yellow_path):
+            brush_yellow = Image.open(brush_yellow_path).convert("RGBA").resize((br3_w, br3_h), Image.Resampling.LANCZOS)
+        else:
+            brush_yellow = Image.new("RGBA", (br3_w, br3_h), (255, 200, 10, 240))
+
+        t3_canvas = Image.new("RGBA", (br3_w, br3_h), (0, 0, 0, 0))
+        t3_canvas.paste(brush_yellow, (0, 0), brush_yellow)
+        t3_draw = ImageDraw.Draw(t3_canvas)
+
+        start_y3 = (br3_h - total_h3) // 2
+        for idx_l, line_str in enumerate(l3_lines):
+            bb = f3.getbbox(line_str)
+            lw = bb[2] - bb[0]
+            lx = (br3_w - lw) // 2 - bb[0]
+            ly = start_y3 + idx_l * line_h3 - bb[1]
+            t3_draw.text((lx + int(3 * scale), ly + int(4 * scale)), line_str, font=f3, fill=(0, 0, 0, 160),
+                         stroke_width=int(6 * scale), stroke_fill=(0, 0, 0, 160))
+            t3_draw.text((lx, ly), line_str, font=f3, fill=(160, 0, 20, 255),
+                         stroke_width=int(6 * scale), stroke_fill=(255, 255, 255, 255))
+
+        p3_x = max(0, (bw - br3_w) // 2)
+        p3_y = p2_y + t2_h + int(24 * scale)
+        block.paste(t3_canvas, (p3_x, p3_y), t3_canvas)
+
+        # 3. Cắt gọn vùng chữ và nghiêng +5.5° ngược chiều kim đồng hồ (bay lên bên phải)
+        bbox = block.getbbox()
+        if bbox:
+            block = block.crop(bbox)
+
+        rotated_block = block.rotate(5.5, resample=Image.Resampling.BICUBIC, expand=True)
+        # Khóa chống tràn tuyệt đối 100%
+        if rotated_block.width > max_block_w:
+            factor = max_block_w / float(rotated_block.width)
+            new_sz = (max_block_w, int(rotated_block.height * factor))
+            rotated_block = rotated_block.resize(new_sz, Image.Resampling.LANCZOS)
+
+        rb_w, rb_h = rotated_block.size
+        paste_x = sw - rb_w - int(40 * scale)
+        paste_y = (sh - rb_h) // 2 - int(10 * scale)
+        final_bg.paste(rotated_block, (paste_x, paste_y), rotated_block)
+
+        # 4. Huy hiệu FULL (Góc dưới trái)
+        if os.path.exists(badge_full_path):
+            badge = Image.open(badge_full_path).convert("RGBA")
+            badge_w, badge_h = int(250 * scale), int(115 * scale)
+            badge = badge.resize((badge_w, badge_h), Image.Resampling.LANCZOS)
+            final_bg.paste(badge, (int(45 * scale), sh - badge_h - int(40 * scale)), badge)
+
+        # 5. Avatar (Góc trên trái)
+        if os.path.exists(avatar_path):
+            av = Image.open(avatar_path).convert("RGBA")
+            av_sz = int(95 * scale)
+            av = av.resize((av_sz, av_sz), Image.Resampling.LANCZOS)
+            av_mask = Image.new("L", (av_sz, av_sz), 0)
+            ImageDraw.Draw(av_mask).ellipse((0, 0, av_sz, av_sz), fill=255)
+            av_circ = Image.new("RGBA", (av_sz, av_sz), (0, 0, 0, 0))
+            av_circ.paste(av, (0, 0), av_mask)
+            ImageDraw.Draw(av_circ).ellipse((2, 2, av_sz - 3, av_sz - 3), outline=(255, 215, 0, 255), width=int(3 * scale))
+            final_bg.paste(av_circ, (int(45 * scale), int(45 * scale)), av_circ)
+
+        # 6. Downscale LANCZOS về kích thước chuẩn 1280x720
+        out_rgb = final_bg.resize((target_w, target_h), Image.Resampling.LANCZOS).convert("RGB")
         out_rgb.save(output_path, "JPEG", quality=95)
-        print(f"[ThumbnailMaker] ✅ Xuất Thumbnail ngang chuẩn 16:9: {output_path}")
+        print(f"[ThumbnailMaker] ✅ Xuất Thumbnail ngang chuẩn 16:9 (3 tầng cọ sơn): {output_path}")
         return output_path
 
     @classmethod
@@ -402,134 +470,216 @@ class ThumbnailMaker:
         source_frame_path: str,
         catchy_title: str,
         output_path: str,
-        face_cx_ratio: float = 0.5
+        face_cx_ratio: float = 0.5,
+        layers: Optional[Dict[str, str]] = None,
+        bg_image: Optional[Image.Image] = None
     ) -> str:
         """
         Render Thumbnail Dọc 720x1280 (chuẩn tỷ lệ 9:16 Shorts/TikTok).
-        Định vị cửa sổ crop theo tâm khuôn mặt (face-centered crop) để không bị xén mặt nhân vật.
+        - Nền: Ảnh AI điện ảnh 9:16 (hoặc Cinematic Color Grading fallback).
+        - Phía dưới (y=62%..93%): Khối chữ 3 tầng nghiêng +5.5° căn giữa cân đối.
+        - Góc trên: Avatar tròn + Huy hiệu FULL sang trọng.
         """
         target_w, target_h = 720, 1280
-        src_img = Image.open(source_frame_path).convert("RGBA")
-        sw, sh = src_img.size
+        scale = 2
+        sw, sh = target_w * scale, target_h * scale  # 1440 x 2560
+        max_block_w = int(600 * scale)  # Tối đa 600px tại 1x (1200px tại 2x = 83.3% bề rộng)
 
-        # Cắt lấy tỷ lệ 9:16
-        target_ratio = target_w / target_h
-        src_ratio = sw / sh
-
-        if src_ratio > target_ratio:
-            crop_w = int(sh * target_ratio)
-            crop_h = sh
-            # Căn cửa sổ crop theo tâm khuôn mặt
-            face_cx = int(sw * max(0.05, min(0.95, face_cx_ratio)))
-            cx = max(0, min(sw - crop_w, face_cx - crop_w // 2))
-            cy = 0
+        # 1. Chuẩn bị ảnh nền 1440x2560
+        if bg_image:
+            final_bg = bg_image.convert("RGBA").resize((sw, sh), Image.Resampling.LANCZOS)
         else:
-            crop_w = sw
-            crop_h = int(sw / target_ratio)
-            cx = 0
-            cy = max(0, min(sh - crop_h, int(sh * 0.35) - crop_h // 2))
+            final_bg = GeminiClient.generate_cinematic_thumbnail_bg(
+                story_bible={},
+                reference_frame_path=source_frame_path,
+                aspect_ratio="9:16",
+                face_cx_ratio=face_cx_ratio
+            ).resize((sw, sh), Image.Resampling.LANCZOS)
 
-        cropped = src_img.crop((cx, cy, cx + crop_w, cy + crop_h))
-        final_img = cropped.resize((target_w, target_h), Image.Resampling.LANCZOS)
-        w, h = final_img.size
-
-        # 0. KHỐI LÀM MỜ VÀ TINT ĐEN CHUYÊN DỤNG XÓA SẠCH 100% PHỤ ĐỀ TRUNG GỐC (y=780..950)
-        # Bắt buộc áp dụng GaussianBlur(radius=24) + nền tint đen rgba(0,0,0,0.45) với viền feathered 30px
-        sub_y1, sub_y2 = 780, 950
-        feather = 30
-        sub_blurred = final_img.filter(ImageFilter.GaussianBlur(radius=24))
-        tint_layer = Image.new("RGBA", (w, h), (0, 0, 0, 115))  # alpha 115 ~= 45% tint đen
+        # 1b. Xóa sạch 100% vệt chữ Hán y=760..980px (59%..77% chiều cao) với feather 35px
+        blur_y1 = int(760 * scale)
+        blur_y2 = int(980 * scale)
+        feather = int(35 * scale)
+        sub_blurred = final_bg.filter(ImageFilter.GaussianBlur(radius=int(26 * scale)))
+        tint_layer = Image.new("RGBA", (sw, sh), (0, 0, 0, int(255 * 0.38)))
         sub_blurred_tinted = Image.alpha_composite(sub_blurred, tint_layer)
-
-        sub_mask = Image.new("L", (w, h), 0)
+        sub_mask = Image.new("L", (sw, sh), 0)
         s_draw = ImageDraw.Draw(sub_mask)
-        for cur_y in range(sub_y1, sub_y2):
-            if cur_y < sub_y1 + feather:
-                m_alpha = int(255 * ((cur_y - sub_y1) / float(feather)))
-            elif cur_y > sub_y2 - feather:
-                m_alpha = int(255 * ((sub_y2 - cur_y) / float(feather)))
+        for cur_y in range(blur_y1, blur_y2):
+            if cur_y < blur_y1 + feather:
+                m_alpha = int(255 * ((cur_y - blur_y1) / float(feather)))
+            elif cur_y > blur_y2 - feather:
+                m_alpha = int(255 * ((blur_y2 - cur_y) / float(feather)))
             else:
                 m_alpha = 255
-            s_draw.line([(0, cur_y), (w, cur_y)], fill=m_alpha)
-        final_img.paste(sub_blurred_tinted, (0, 0), sub_mask)
+            s_draw.line([(0, cur_y), (sw, cur_y)], fill=m_alpha)
+        final_bg.paste(sub_blurred_tinted, (0, 0), sub_mask)
 
-        # Che mượt vùng đáy bằng dải GaussianBlur + Gradient tối từ y=740 xuống đáy y=1280 (42% đáy)
-        y_start = 740
-        grad_h = h - y_start
-
-        # 1. Bản copy làm mờ vùng đáy
-        blurred = final_img.filter(ImageFilter.GaussianBlur(radius=18))
-
-        # 2. Feathered alpha mask cho lớp blur (alpha tăng dần từ 0 ở y=740 lên 255 ở y=840..1280)
-        blur_mask = Image.new("L", (w, h), 0)
-        b_draw = ImageDraw.Draw(blur_mask)
-        for y in range(grad_h):
-            ratio = y / float(grad_h)
-            alpha = int(255 * (min(1.0, ratio * 1.8) ** 1.4))
-            b_draw.line([(0, y_start + y), (w, y_start + y)], fill=alpha)
-        final_img.paste(blurred, (0, 0), blur_mask)
-
-        # 3. Lớp gradient tối (từ alpha=0 ở y=740 lên alpha=245 ở y=920..1280)
-        dark_layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        k_draw = ImageDraw.Draw(dark_layer)
-        for y in range(grad_h):
-            ratio = y / float(grad_h)
-            alpha = int(245 * (min(1.0, ratio * 1.5) ** 1.2))
-            k_draw.line([(0, y_start + y), (w, y_start + y)], fill=(0, 0, 0, alpha))
-        final_img.paste(dark_layer, (0, 0), dark_layer)
-
-        draw = ImageDraw.Draw(final_img)
-        font_path = Settings.get_font_path()
+        font_path = cls.get_display_font_path()
         avatar_path = str(ASSETS_DIR / "avatar.png")
+        kit_dir = ASSETS_DIR / "thumb_kit"
+        brush_red_path = str(kit_dir / "brush_red.png")
+        brush_yellow_path = str(kit_dir / "brush_yellow.png")
+        badge_full_path = str(kit_dir / "badge_full.png")
 
-        # 1. Chèn Avatar tròn 120x120
-        avatar_img = cls.create_circular_avatar(avatar_path, size=115)
-        final_img.paste(avatar_img, (32, 40), mask=avatar_img)
+        # 2. Chuẩn bị nội dung 3 tầng
+        if not layers:
+            layers = cls.parse_layers_from_title(catchy_title)
 
-        # 2. Chèn Badge 'REVIEW PHIM'
-        badge_w, badge_h = 230, 52
-        badge_x, badge_y = 165, 70
-        draw.rounded_rectangle(
-            [(badge_x, badge_y), (badge_x + badge_w, badge_y + badge_h)],
-            radius=14,
-            fill=(210, 25, 25, 245),
-            outline=(255, 215, 0, 255),
-            width=3
-        )
-        try:
-            badge_font = ImageFont.truetype(font_path, 26)
-            draw.text((badge_x + 20, badge_y + 11), "REVIEW PHIM", fill=(255, 255, 255), font=badge_font)
-        except Exception:
-            draw.text((badge_x + 20, badge_y + 11), "REVIEW PHIM", fill=(255, 255, 255))
+        l1_text = layers.get("line1_red_brush", "TRỌN BỘ FULL").upper().strip()
+        l2_text = layers.get("line2_big_yellow", "VẢ MẶT").upper().strip()
+        l3_text = layers.get("line3_yellow_block", "CẢ NHÀ QUỲ XIN!").upper().strip()
 
-        # 3. Tiêu đề Tiếng Việt in hoa giật gân (auto-fit & auto-wrap với lề an toàn >= 40px)
-        # Đặt tiêu đề to đậm đè chính xác lên dải y=840..1100 để triệt tiêu 100% mọi chữ Hán
-        clean_title = cls.clean_catchy_title(catchy_title)
-        max_title_w = int(target_w * 0.88)  # 633px (lề an toàn > 43px mỗi bên)
-        lines, title_font, font_sz = cls.fit_and_wrap_text(
-            clean_title, font_path, max_width=max_title_w, start_font_size=54, min_font_size=36
-        )
+        # Canvas tạm chứa khối chữ unrotated
+        bw = max_block_w
+        bh = int(550 * scale)
+        block = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
 
-        line_h = font_sz + 14
-        total_text_h = len(lines) * line_h
-        base_y = 880 if len(lines) == 1 else (920 - total_text_h // 2)
+        # --- TẦNG 1: Vệt cọ đỏ + chữ trắng ---
+        f1_size = 50 * scale
+        f1 = ImageFont.truetype(font_path, f1_size)
+        b1_bbox = f1.getbbox(l1_text)
+        t1_w = b1_bbox[2] - b1_bbox[0]
+        br1_w = int(t1_w * 1.25) + int(45 * scale)
+        while (br1_w > bw - int(40 * scale)) and f1_size > 26 * scale:
+            f1_size -= 2 * scale
+            f1 = ImageFont.truetype(font_path, f1_size)
+            b1_bbox = f1.getbbox(l1_text)
+            t1_w = b1_bbox[2] - b1_bbox[0]
+            br1_w = int(t1_w * 1.25) + int(45 * scale)
 
-        for l_idx, line in enumerate(lines):
-            bbox = title_font.getbbox(line)
-            tw = bbox[2] - bbox[0]
-            tx = max(40, (target_w - tw) // 2)
-            ty = base_y + l_idx * line_h
+        t1_h = b1_bbox[3] - b1_bbox[1]
+        br1_w = max(br1_w, int(320 * scale))
+        br1_h = int(120 * scale)
 
-            # Viền đen dày & đổ bóng cực mạnh
-            for dx in range(-5, 6):
-                for dy in range(-5, 6):
-                    draw.text((tx + dx, ty + dy), line, fill=(0, 0, 0, 255), font=title_font)
-            # Chữ vàng nghệ thuật
-            draw.text((tx, ty), line, fill=(255, 230, 10, 255), font=title_font)
+        if os.path.exists(brush_red_path):
+            brush_red = Image.open(brush_red_path).convert("RGBA").resize((br1_w, br1_h), Image.Resampling.LANCZOS)
+        else:
+            brush_red = Image.new("RGBA", (br1_w, br1_h), (210, 20, 30, 240))
 
-        out_rgb = final_img.convert("RGB")
+        t1_canvas = Image.new("RGBA", (br1_w, br1_h), (0, 0, 0, 0))
+        t1_canvas.paste(brush_red, (0, 0), brush_red)
+        t1_draw = ImageDraw.Draw(t1_canvas)
+        tx1 = (br1_w - t1_w) // 2 - b1_bbox[0]
+        ty1 = (br1_h - t1_h) // 2 - b1_bbox[1] - int(4 * scale)
+        t1_draw.text((tx1, ty1), l1_text, font=f1, fill=(255, 255, 255, 255),
+                     stroke_width=int(4 * scale), stroke_fill=(15, 15, 15, 255))
+
+        p1_x = (bw - br1_w) // 2
+        p1_y = int(15 * scale)
+        block.paste(t1_canvas, (p1_x, p1_y), t1_canvas)
+
+        # --- TẦNG 2: Chữ vàng chanh cực lớn ---
+        f2_size = 85 * scale
+        f2 = ImageFont.truetype(font_path, f2_size)
+        b2_bbox = f2.getbbox(l2_text)
+        t2_w = b2_bbox[2] - b2_bbox[0]
+        while (t2_w + int(30 * scale) > bw - int(30 * scale)) and f2_size > 42 * scale:
+            f2_size -= 2 * scale
+            f2 = ImageFont.truetype(font_path, f2_size)
+            b2_bbox = f2.getbbox(l2_text)
+            t2_w = b2_bbox[2] - b2_bbox[0]
+        t2_h = b2_bbox[3] - b2_bbox[1]
+
+        t2_canvas = Image.new("RGBA", (bw, t2_h + int(50 * scale)), (0, 0, 0, 0))
+        t2_draw = ImageDraw.Draw(t2_canvas)
+        tx2 = (bw - t2_w) // 2 - b2_bbox[0]
+        ty2 = int(10 * scale) - b2_bbox[1]
+        for s_dx, s_dy in [(int(6 * scale), int(8 * scale)), (int(10 * scale), int(12 * scale))]:
+            t2_draw.text((tx2 + s_dx, ty2 + s_dy), l2_text, font=f2, fill=(0, 0, 0, 180),
+                         stroke_width=int(12 * scale), stroke_fill=(0, 0, 0, 180))
+        t2_draw.text((tx2, ty2), l2_text, font=f2, fill=(255, 240, 0, 255),
+                     stroke_width=int(10 * scale), stroke_fill=(10, 10, 10, 255))
+
+        p2_y = p1_y + br1_h - int(10 * scale)
+        block.paste(t2_canvas, (0, p2_y), t2_canvas)
+
+        # --- TẦNG 3: Mảng cọ vàng rực + chữ đỏ thẫm viền trắng ---
+        words3 = l3_text.split()
+        if len(words3) >= 4 or len(l3_text) > 16:
+            mid = (len(words3) + 1) // 2
+            l3_lines = [" ".join(words3[:mid]), " ".join(words3[mid:])]
+        else:
+            l3_lines = [l3_text]
+
+        f3_size = (48 if len(l3_lines) == 1 else 40) * scale
+        f3 = ImageFont.truetype(font_path, f3_size)
+        max_w3 = max([f3.getbbox(ln)[2] - f3.getbbox(ln)[0] for ln in l3_lines])
+        while (max_w3 + int(50 * scale) > bw - int(30 * scale)) and f3_size > 24 * scale:
+            f3_size -= 2 * scale
+            f3 = ImageFont.truetype(font_path, f3_size)
+            max_w3 = max([f3.getbbox(ln)[2] - f3.getbbox(ln)[0] for ln in l3_lines])
+
+        line_h3 = int(f3_size * 1.15)
+        total_h3 = len(l3_lines) * line_h3
+
+        br3_w = min(bw - int(20 * scale), max(int(max_w3 * 1.25) + int(50 * scale), int(380 * scale)))
+        br3_h = int((130 if len(l3_lines) == 1 else 195) * scale)
+
+        if os.path.exists(brush_yellow_path):
+            brush_yellow = Image.open(brush_yellow_path).convert("RGBA").resize((br3_w, br3_h), Image.Resampling.LANCZOS)
+        else:
+            brush_yellow = Image.new("RGBA", (br3_w, br3_h), (255, 200, 10, 240))
+
+        t3_canvas = Image.new("RGBA", (br3_w, br3_h), (0, 0, 0, 0))
+        t3_canvas.paste(brush_yellow, (0, 0), brush_yellow)
+        t3_draw = ImageDraw.Draw(t3_canvas)
+
+        start_y3 = (br3_h - total_h3) // 2
+        for idx_l, line_str in enumerate(l3_lines):
+            bb = f3.getbbox(line_str)
+            lw = bb[2] - bb[0]
+            lx = (br3_w - lw) // 2 - bb[0]
+            ly = start_y3 + idx_l * line_h3 - bb[1]
+            t3_draw.text((lx + int(3 * scale), ly + int(4 * scale)), line_str, font=f3, fill=(0, 0, 0, 160),
+                         stroke_width=int(6 * scale), stroke_fill=(0, 0, 0, 160))
+            t3_draw.text((lx, ly), line_str, font=f3, fill=(160, 0, 20, 255),
+                         stroke_width=int(6 * scale), stroke_fill=(255, 255, 255, 255))
+
+        p3_x = (bw - br3_w) // 2
+        p3_y = p2_y + t2_h + int(20 * scale)
+        block.paste(t3_canvas, (p3_x, p3_y), t3_canvas)
+
+        # 3. Cắt gọn vùng chữ và nghiêng +5.5° ngược chiều kim đồng hồ (bay lên bên phải)
+        bbox = block.getbbox()
+        if bbox:
+            block = block.crop(bbox)
+
+        rotated_block = block.rotate(5.5, resample=Image.Resampling.BICUBIC, expand=True)
+        # Khóa chống tràn tuyệt đối 100%
+        if rotated_block.width > max_block_w:
+            factor = max_block_w / float(rotated_block.width)
+            new_sz = (max_block_w, int(rotated_block.height * factor))
+            rotated_block = rotated_block.resize(new_sz, Image.Resampling.LANCZOS)
+
+        rb_w, rb_h = rotated_block.size
+        paste_x = (sw - rb_w) // 2
+        paste_y = sh - rb_h - int(70 * scale)
+        final_bg.paste(rotated_block, (paste_x, paste_y), rotated_block)
+
+        # 4. Avatar (Góc trên trái)
+        if os.path.exists(avatar_path):
+            av = Image.open(avatar_path).convert("RGBA")
+            av_sz = int(85 * scale)
+            av = av.resize((av_sz, av_sz), Image.Resampling.LANCZOS)
+            av_mask = Image.new("L", (av_sz, av_sz), 0)
+            ImageDraw.Draw(av_mask).ellipse((0, 0, av_sz, av_sz), fill=255)
+            av_circ = Image.new("RGBA", (av_sz, av_sz), (0, 0, 0, 0))
+            av_circ.paste(av, (0, 0), av_mask)
+            ImageDraw.Draw(av_circ).ellipse((2, 2, av_sz - 3, av_sz - 3), outline=(255, 215, 0, 255), width=int(3 * scale))
+            final_bg.paste(av_circ, (int(35 * scale), int(45 * scale)), av_circ)
+
+        # 5. Huy hiệu FULL (Góc trên phải)
+        if os.path.exists(badge_full_path):
+            badge = Image.open(badge_full_path).convert("RGBA")
+            badge_w, badge_h = int(210 * scale), int(95 * scale)
+            badge = badge.resize((badge_w, badge_h), Image.Resampling.LANCZOS)
+            final_bg.paste(badge, (sw - badge_w - int(35 * scale), int(45 * scale)), badge)
+
+        # 6. Downscale LANCZOS về kích thước chuẩn 720x1280
+        out_rgb = final_bg.resize((target_w, target_h), Image.Resampling.LANCZOS).convert("RGB")
         out_rgb.save(output_path, "JPEG", quality=95)
-        print(f"[ThumbnailMaker] ✅ Xuất Thumbnail dọc chuẩn 9:16: {output_path}")
+        print(f"[ThumbnailMaker] ✅ Xuất Thumbnail dọc chuẩn 9:16 (3 tầng cọ sơn): {output_path}")
         return output_path
 
     @classmethod
@@ -540,15 +690,51 @@ class ThumbnailMaker:
         output_vertical_path: str,
         output_horizontal_path: str,
         tmp_dir: str,
-        skip_ranges: Optional[List[Dict[str, Any]]] = None
+        skip_ranges: Optional[List[Dict[str, Any]]] = None,
+        story_bible: Optional[Dict[str, Any]] = None,
+        layers: Optional[Dict[str, str]] = None
     ) -> Tuple[str, str]:
         """Tạo trọn bộ 2 phiên bản Thumbnail chất lượng cao theo từng tỷ lệ riêng biệt."""
         best_frame_path, face_cx_ratio = cls.select_best_frame_with_ai(video_path, tmp_dir, skip_ranges=skip_ranges)
 
-        # 1. Thumbnail Dọc (Shorts/TikTok) với Face-Centered Crop
-        cls.render_vertical_thumbnail(best_frame_path, catchy_title, output_vertical_path, face_cx_ratio=face_cx_ratio)
+        # Sinh ảnh nền điện ảnh bằng AI (kèm fallback Cinematic Color Grading)
+        bg_h = None
+        bg_v = None
+        if story_bible:
+            try:
+                bg_h = GeminiClient.generate_cinematic_thumbnail_bg(
+                    story_bible=story_bible,
+                    reference_frame_path=best_frame_path,
+                    aspect_ratio="16:9",
+                    face_cx_ratio=face_cx_ratio
+                )
+                bg_v = GeminiClient.generate_cinematic_thumbnail_bg(
+                    story_bible=story_bible,
+                    reference_frame_path=best_frame_path,
+                    aspect_ratio="9:16",
+                    face_cx_ratio=face_cx_ratio
+                )
+            except Exception as e_bg:
+                print(f"[ThumbnailMaker] Lỗi sinh background: {e_bg}")
 
-        # 2. Thumbnail Ngang (YouTube)
-        cls.render_horizontal_thumbnail(best_frame_path, catchy_title, output_horizontal_path)
+        # 1. Thumbnail Dọc (Shorts/TikTok) với Face-Centered Crop & 3 Tầng Vệt Cọ
+        cls.render_vertical_thumbnail(
+            best_frame_path,
+            catchy_title,
+            output_vertical_path,
+            face_cx_ratio=face_cx_ratio,
+            layers=layers,
+            bg_image=bg_v
+        )
+
+        # 2. Thumbnail Ngang (YouTube) với Bố cục Điện ảnh Split 16:9 & 3 Tầng Vệt Cọ
+        cls.render_horizontal_thumbnail(
+            best_frame_path,
+            catchy_title,
+            output_horizontal_path,
+            face_cx_ratio=face_cx_ratio,
+            layers=layers,
+            bg_image=bg_h
+        )
 
         return output_vertical_path, output_horizontal_path

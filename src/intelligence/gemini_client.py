@@ -5,7 +5,11 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
-from PIL import Image
+import urllib.request
+import urllib.parse
+import io
+import numpy as np
+from PIL import Image, ImageFilter, ImageEnhance, ImageDraw, ImageOps
 
 from config.settings import Settings
 from google import genai
@@ -406,3 +410,229 @@ Trả về duy nhất định dạng JSON chuẩn:
             pass
 
         return 0, candidate_frame_paths[0], 0.5
+
+    @classmethod
+    def generate_cinematic_thumbnail_bg(
+        cls,
+        story_bible: Dict[str, Any],
+        reference_frame_path: str,
+        aspect_ratio: str = "16:9",
+        output_path: Optional[str] = None,
+        face_cx_ratio: float = 0.5
+    ) -> Image.Image:
+        """
+        Tạo ảnh nền điện ảnh chuẩn kênh triệu view từ khung hình phim RAW thật:
+        - Mặc định: Dùng khung hình RAW thật + Cinematic Color Grading (UnsharpMask, Contrast, Warm highlight)
+                    + Bố cục Trái–Phải (Cinema Split cho khung dọc, Mirroring cho khung ngang) chống đè mặt 100%.
+        - Chỉ gọi Gemini Image API nếu cờ ENABLE_PAID_AI_THUMBNAIL=true trong môi trường.
+        - Hoàn toàn KHÔNG dùng bên thứ ba kém chất lượng hay ép watermark.
+        """
+        title = story_bible.get("vietnamese_title") or story_bible.get("series_title", "Drama")
+        summary = str(story_bible.get("rolling_summary", ""))[:600]
+
+        target_w, target_h = (1280, 720) if aspect_ratio == "16:9" else (720, 1280)
+
+        ai_generated_image = None
+        enable_paid_ai = os.getenv("ENABLE_PAID_AI_THUMBNAIL", "false").lower() in ("true", "1")
+
+        if enable_paid_ai:
+            try:
+                client, flash_model = cls.get_client_and_model()
+                prompt_draft = (
+                    f"Write a 1-paragraph ultra-detailed cinematic movie poster image prompt in English for the drama '{title}'.\n"
+                    f"Story context: {summary}\n\n"
+                    f"COMPOSITION RULES:\n"
+                    f"- Aspect ratio: {aspect_ratio}\n"
+                    f"- For 16:9: The main character is on the LEFT side of frame (left 45%), facing viewer with intense dramatic expression. "
+                    f"The right 45% of frame MUST be dark warm bokeh negative space for text overlay.\n"
+                    f"- For 9:16: Character in upper two-thirds. Bottom 38% dark warm bokeh negative space.\n"
+                    f"- ABSOLUTELY NO TEXT, NO LETTERS, NO SUBTITLES, NO WATERMARKS, NO LOGOS."
+                )
+                resp_p = client.models.generate_content(model=flash_model, contents=prompt_draft)
+                image_prompt = resp_p.text.strip() if resp_p and resp_p.text else ""
+
+                image_candidates = ["gemini-2.5-flash-image", "gemini-3.1-flash-image", "gemini-3-pro-image"]
+                for img_m in image_candidates:
+                    try:
+                        res_img = client.models.generate_content(model=img_m, contents=image_prompt)
+                        if res_img and res_img.candidates:
+                            for p in res_img.candidates[0].content.parts:
+                                if hasattr(p, "inline_data") and p.inline_data:
+                                    img_bytes = p.inline_data.data
+                                    ai_generated_image = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+                                    print(f"[GeminiClient] ✅ AI tạo ảnh thành công bằng Gemini ({img_m})!")
+                                    break
+                        if ai_generated_image:
+                            break
+                    except Exception:
+                        continue
+            except Exception as e_ai:
+                print(f"[GeminiClient] Gemini Paid AI Image không khả dụng ({e_ai}).")
+
+        # --- CHẾ ĐỘ MẶC ĐỊNH CHÍNH: KHUNG HÌNH PHIM RAW THẬT + BỐ CỤC CHỐNG ĐÈ MẶT ---
+        if ai_generated_image:
+            final_bg = ai_generated_image.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        else:
+            print("[GeminiClient] Sử dụng Khung hình RAW thật + Cinematic Color Grading & Face-Safe Layout.")
+            if not os.path.exists(reference_frame_path):
+                final_bg = Image.new("RGBA", (target_w, target_h), (25, 20, 20, 255))
+            else:
+                src = Image.open(reference_frame_path).convert("RGBA")
+
+                # 1. Cắt bỏ 100% viền đen letterbox
+                arr_gray = np.array(src.convert("L"))
+                h_src, w_src = arr_gray.shape
+                row_m = np.max(arr_gray, axis=1)
+                col_m = np.max(arr_gray, axis=0)
+                non_b_rows = np.where(row_m > 20)[0]
+                non_b_cols = np.where(col_m > 20)[0]
+                if len(non_b_rows) > 0 and len(non_b_cols) > 0:
+                    top_b, bot_b = non_b_rows[0], non_b_rows[-1]
+                    left_b, right_b = non_b_cols[0], non_b_cols[-1]
+                    if top_b > h_src * 0.01 or (h_src - 1 - bot_b) > h_src * 0.01 or left_b > w_src * 0.01 or (w_src - 1 - right_b) > w_src * 0.01:
+                        src = src.crop((left_b, top_b, right_b + 1, bot_b + 1))
+                        print(f"[GeminiClient] Đã cắt bỏ viền đen letterbox: {w_src}x{h_src} -> {src.size[0]}x{src.size[1]}")
+
+                sw, sh = src.size
+                is_vertical_source = (sh > sw * 1.15)
+
+                if aspect_ratio == "16:9":
+                    if is_vertical_source:
+                        # NGUỒN DỌC -> BỐ CỤC CINEMA SPLIT 16:9 (XÓA TUYỆT ĐỐI 100% SUB TRÊN ÁO)
+                        # Nền mờ 1280x720 từ ảnh gốc phóng đầy
+                        bg_blur = src.resize((target_w, target_h), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(radius=28))
+                        tint_bg = Image.new("RGBA", (target_w, target_h), (12, 10, 14, 150))
+                        final_bg = Image.alpha_composite(bg_blur, tint_bg)
+
+                        # Nhân vật chính: CHỈ LẤY NỬA TRÊN ĐẦU & VAI (y=0..int(sh*0.60)), HOÀN TOÀN TRÊN VÙNG SUB GỐC
+                        crop_head_h = int(sh * 0.60)
+                        fg_head = src.crop((0, 0, sw, crop_head_h))
+
+                        # Scale đầy chiều cao 720px (độ rộng ~670px tại 1x)
+                        fg_h = target_h
+                        fg_w = int(fg_h * (sw / float(crop_head_h)))
+                        fg_scaled = fg_head.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
+
+                        # Làm mềm viền phải (feather 140px) hòa mượt vào nền tối
+                        fg_mask = Image.new("L", (fg_w, fg_h), 255)
+                        feather_w = min(140, int(fg_w * 0.25))
+                        f_draw = ImageDraw.Draw(fg_mask)
+                        for fx in range(fg_w - feather_w, fg_w):
+                            r = (fg_w - 1 - fx) / float(feather_w)
+                            f_draw.line([(fx, 0), (fx, fg_h)], fill=int(255 * r))
+                        final_bg.paste(fg_scaled, (0, 0), fg_mask)
+                        print(f"[GeminiClient] Cinema Split 16:9 (Cắt nửa trên y=0..{crop_head_h}px): Nhân vật ở NỬA TRÁI (0..{fg_w}px), sạch 100% sub Trung trên áo!")
+                    else:
+                        # NGUỒN NGANG -> XÓA SUB TRUNG & KHÓA CHỐNG ĐÈ MẶT BÊN PHẢI
+                        sub_y1 = int(sh * 0.76)
+                        sub_y2 = int(sh * 0.95)
+                        feather = int(sh * 0.03)
+                        sub_blurred = src.filter(ImageFilter.GaussianBlur(radius=20))
+                        tint_layer = Image.new("RGBA", src.size, (0, 0, 0, 130))
+                        sub_blurred_tinted = Image.alpha_composite(sub_blurred, tint_layer)
+                        sub_mask = Image.new("L", src.size, 0)
+                        s_draw = ImageDraw.Draw(sub_mask)
+                        for cur_y in range(sub_y1, sub_y2):
+                            if cur_y < sub_y1 + feather:
+                                m_alpha = int(255 * ((cur_y - sub_y1) / float(feather)))
+                            elif cur_y > sub_y2 - feather:
+                                m_alpha = int(255 * ((sub_y2 - cur_y) / float(feather)))
+                            else:
+                                m_alpha = 255
+                            s_draw.line([(0, cur_y), (sw, cur_y)], fill=m_alpha)
+                        src.paste(sub_blurred_tinted, (0, 0), sub_mask)
+
+                        # Nếu mặt lệch sang bên phải (> 0.45) -> Tự động lật ngang ảnh để mặt sang nửa TRÁI (10%..48%)
+                        if face_cx_ratio > 0.45:
+                            print(f"[GeminiClient] Mặt nhân vật lệch phải (face_cx_ratio={face_cx_ratio:.2f} > 0.45) -> Tự động lật ngang ảnh (ImageOps.mirror) sang nửa TRÁI!")
+                            src = ImageOps.mirror(src)
+                            face_cx_ratio = 1.0 - face_cx_ratio
+
+                        t_ratio = target_w / target_h
+                        s_ratio = sw / sh
+                        if s_ratio > t_ratio:
+                            crop_w = int(sh * t_ratio)
+                            cropped = src.crop((0, 0, crop_w, sh))
+                        else:
+                            crop_h = int(sw / t_ratio)
+                            cy = int((sh - crop_h) * 0.2)
+                            cropped = src.crop((0, cy, sw, cy + crop_h))
+                        final_bg = cropped.resize((target_w, target_h), Image.Resampling.LANCZOS)
+                else:
+                    # KHUNG DỌC 9:16 (Xóa sạch 100% vệt sub Trung y=58%..78%)
+                    sub_y1 = int(sh * 0.58)
+                    sub_y2 = int(sh * 0.78)
+                    feather = int(sh * 0.035)
+                    sub_blurred = src.filter(ImageFilter.GaussianBlur(radius=26))
+                    tint_layer = Image.new("RGBA", src.size, (0, 0, 0, int(255 * 0.38)))
+                    sub_blurred_tinted = Image.alpha_composite(sub_blurred, tint_layer)
+                    sub_mask = Image.new("L", src.size, 0)
+                    s_draw = ImageDraw.Draw(sub_mask)
+                    for cur_y in range(sub_y1, sub_y2):
+                        if cur_y < sub_y1 + feather:
+                            m_alpha = int(255 * ((cur_y - sub_y1) / float(feather)))
+                        elif cur_y > sub_y2 - feather:
+                            m_alpha = int(255 * ((sub_y2 - cur_y) / float(feather)))
+                        else:
+                            m_alpha = 255
+                        s_draw.line([(0, cur_y), (sw, cur_y)], fill=m_alpha)
+                    src.paste(sub_blurred_tinted, (0, 0), sub_mask)
+
+                    t_ratio = target_w / target_h
+                    s_ratio = sw / sh
+                    if s_ratio > t_ratio:
+                        crop_w = int(sh * t_ratio)
+                        cx = int(face_cx_ratio * sw - crop_w / 2)
+                        cx = max(0, min(sw - crop_w, cx))
+                        cropped = src.crop((cx, 0, cx + crop_w, sh))
+                    else:
+                        crop_h = int(sw / t_ratio)
+                        cy = int((sh - crop_h) * 0.2)
+                        cropped = src.crop((0, cy, sw, cy + crop_h))
+                    final_bg = cropped.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+        # 4. Cinematic Color Grading hoàn thiện
+        final_bg = final_bg.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+        final_bg = ImageEnhance.Color(final_bg).enhance(1.25)
+        final_bg = ImageEnhance.Contrast(final_bg).enhance(1.15)
+
+        # Ám vàng ấm highlight nhẹ
+        arr = np.array(final_bg).astype(np.float32)
+        lum = 0.299 * arr[:, :, 0] + 0.587 * arr[:, :, 1] + 0.114 * arr[:, :, 2]
+        h_mask = np.clip((lum - 90) / 165.0, 0, 1.0)[:, :, np.newaxis]
+        arr[:, :, 0] += h_mask[:, :, 0] * 12.0
+        arr[:, :, 1] += h_mask[:, :, 0] * 6.0
+        arr[:, :, 2] -= h_mask[:, :, 0] * 10.0
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
+        final_bg = Image.fromarray(arr).convert("RGBA")
+
+        # 5. Phủ gradient vignette tối sâu tạo không gian tương phản cho chữ
+        w, h = final_bg.size
+        vignette = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        v_draw = ImageDraw.Draw(vignette)
+        if aspect_ratio == "16:9":
+            # Tối mờ dần từ x=45% sang phải x=100% để cụm chữ 3 tầng nổi bật tối đa
+            x_start = int(w * 0.45)
+            v_w = w - x_start
+            for x in range(v_w):
+                cur_x = x_start + x
+                ratio = x / float(v_w)
+                alpha = int(235 * (ratio ** 1.25))
+                v_draw.line([(cur_x, 0), (cur_x, h)], fill=(6, 5, 10, alpha))
+        else:
+            # Tối mờ dần từ y=58% xuống đáy y=100% cho khung dọc
+            y_start = int(h * 0.58)
+            v_h = h - y_start
+            for y in range(v_h):
+                cur_y = y_start + y
+                ratio = y / float(v_h)
+                alpha = int(235 * (ratio ** 1.25))
+                v_draw.line([(0, cur_y), (w, cur_y)], fill=(6, 5, 10, alpha))
+
+        final_bg = Image.alpha_composite(final_bg, vignette)
+
+        if output_path:
+            final_bg.convert("RGB").save(output_path, "JPEG", quality=95)
+            print(f"[GeminiClient] Đã lưu background điện ảnh: {output_path}")
+
+        return final_bg

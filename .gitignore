@@ -30,5 +30,7 @@ state/active_series/
 !assets/avatar.png
 !assets/bgm/*
 !assets/fonts/*
+!assets/thumb_kit/*
 
+scratch/
 get_youtube_token.py

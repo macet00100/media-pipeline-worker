@@ -521,7 +521,15 @@ def process_drama_voice_driven(
             output_vertical_path=thumb_v,
             output_horizontal_path=thumb_h,
             tmp_dir=str(work_tmp),
-            skip_ranges=multimodal_primary.get("skip_ranges", [])
+            skip_ranges=multimodal_primary.get("skip_ranges", []),
+            story_bible={
+                "series_id": movie_id,
+                "series_title": movie_title,
+                "vietnamese_title": vietnamese_title,
+                "total_episodes": total_episodes,
+                "rolling_summary": story_bible.rolling_summary
+            },
+            layers=seo_data.get("thumbnail_layers")
         )
 
         # Lưu story_bible.json vào package_dir
