@@ -131,6 +131,22 @@ jobs:
           export GEMINI_API_KEY=$(echo -n "$GEMINI_API_KEY" | tr -d '\r\n[:space:]')
           export GOOGLE_API_KEY=$(echo -n "$GOOGLE_API_KEY" | tr -d '\r\n[:space:]')
           
+          echo "=== 🌐 KIỂM TRA MẠNG RUNNER VÀ KẾT NỐI TỚI CÁC CDN ==="
+          echo "Runner Public IPv4: $(curl -4 -s -m 5 https://api.ipify.org || echo 'N/A')"
+          
+          echo "--- Test 1: Liangzi v.lzcdn27.com ---"
+          curl -I -s -m 5 -A "Mozilla/5.0" "https://v.lzcdn27.com/20261021/19753_d0f36985/index.m3u8" | head -n 5 || true
+
+          echo "--- Test 2: Liangzi v.lfthirtytwo.com ---"
+          curl -I -s -m 5 -A "Mozilla/5.0" "https://v.lfthirtytwo.com/20261023/11462_6459a9f3/index.m3u8" | head -n 5 || true
+
+          echo "--- Test 3: Phi Phàm vip.ffzy-play9.com (Referer ffzy1.tv) ---"
+          curl -I -s -m 5 -A "Mozilla/5.0" -H "Referer: https://ffzy1.tv/" "https://vip.ffzy-play9.com/20260818/47454_dedf106c/index.m3u8" | head -n 5 || true
+
+          echo "--- Test 4: Phi Phàm vod.ffzy-plays50.com (Referer ffzy1.tv) ---"
+          curl -I -s -m 5 -A "Mozilla/5.0" -H "Referer: https://ffzy1.tv/" "https://vod.ffzy-plays50.com/20260829/71263_0fa82e56/index.m3u8" | head -n 5 || true
+          echo "======================================================="
+
           CMD="python main.py"
           if [ -n "${{ inputs.max_episodes }}" ]; then
             CMD="$CMD --max-episodes ${{ inputs.max_episodes }}"

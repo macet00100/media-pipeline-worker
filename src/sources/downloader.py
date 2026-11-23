@@ -34,6 +34,10 @@ class Downloader:
             curl_cmd.append(url)
             res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=timeout + 2)
             if res.returncode == 0 and res.stdout.strip():
+                if "<!DOCTYPE" in res.stdout or "<html" in res.stdout:
+                    # Rút gọn để debug xem WAF trả về lỗi gì
+                    clean_err = re.sub(r'\s+', ' ', res.stdout[:250]).strip()
+                    print(f"[Downloader] CDN trả về HTML thay vì M3U8 ({url}): {clean_err}")
                 return res.stdout
         except Exception:
             pass
