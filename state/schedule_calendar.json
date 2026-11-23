@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "timezone": "Asia/Ho_Chi_Minh (GMT+7)",
+  "golden_hours_vn": [
+    "11:30",
+    "17:30",
+    "20:30"
+  ],
+  "pre_upload_buffer_hours": 6,
+  "slots": {
+    "2026-11-23 11:30": {
+      "slot_key": "2026-11-23 11:30",
+      "slot_vn": "2026-11-23T11:30:00+07:00",
+      "publish_at_utc": "2026-11-23T04:30:00Z",
+      "scheduled_publish_timestamp": 1795408200,
+      "golden_hour": "11:30",
+      "date": "2026-11-23",
+      "video_id": "lz_164941",
+      "title": "双姝宫阑梦",
+      "package_dir": "C:\\Users\\ngu06\\Documents\\antigravity\\friendly-euclid\\output\\双姝宫阑梦_20261122_165028",
+      "allocated_at": "2026-11-22T16:59:23.932487+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
+    },
+    "2026-11-23 17:30": {
+      "slot_key": "2026-11-23 17:30",
+      "slot_vn": "2026-11-23T17:30:00+07:00",
+      "publish_at_utc": "2026-11-23T10:30:00Z",
+      "scheduled_publish_timestamp": 1795429800,
+      "golden_hour": "17:30",
+      "date": "2026-11-23",
+      "video_id": "lz_167423",
+      "title": "Review Trọn Bộ Tiểu Thư Thật Trở Về Từ Vùng Núi | Full Từ Đầu Đến Kết",
+      "package_dir": "C:\\Users\\ngu06\\Documents\\antigravity\\friendly-euclid\\output\\被认回时真千金已考出小山村_20261123_002728",
+      "allocated_at": "2026-11-23T00:33:36.312352+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
+    }
+  },
+  "scheduled_videos": [
+    {
+      "slot_key": "2026-11-23 11:30",
+      "slot_vn": "2026-11-23T11:30:00+07:00",
+      "publish_at_utc": "2026-11-23T04:30:00Z",
+      "scheduled_publish_timestamp": 1795408200,
+      "golden_hour": "11:30",
+      "date": "2026-11-23",
+      "video_id": "lz_164941",
+      "title": "双姝宫阑梦",
+      "package_dir": "C:\\Users\\ngu06\\Documents\\antigravity\\friendly-euclid\\output\\双姝宫阑梦_20261122_165028",
+      "allocated_at": "2026-11-22T16:59:23.932487+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
+    },
+    {
+      "slot_key": "2026-11-23 17:30",
+      "slot_vn": "2026-11-23T17:30:00+07:00",
+      "publish_at_utc": "2026-11-23T10:30:00Z",
+      "scheduled_publish_timestamp": 1795429800,
+      "golden_hour": "17:30",
+      "date": "2026-11-23",
+      "video_id": "lz_167423",
+      "title": "Review Trọn Bộ Tiểu Thư Thật Trở Về Từ Vùng Núi | Full Từ Đầu Đến Kết",
+      "package_dir": "C:\\Users\\ngu06\\Documents\\antigravity\\friendly-euclid\\output\\被认回时真千金已考出小山村_20261123_002728",
+      "allocated_at": "2026-11-23T00:33:36.312352+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
+    }
+  ],
+  "last_updated": "2026-11-23T00:33:36.313353+07:00"
+}

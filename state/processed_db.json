@@ -1,0 +1,35 @@
+{
+  "processed_ids": [
+    "lz_164941",
+    "lz_167423"
+  ],
+  "failed_ids": {
+    "lz_167423": {
+      "title": "被认回时真千金已考出小山村",
+      "reason": "name 'subprocess' is not defined",
+      "failed_at": "2026-11-23T01:14:45.305299"
+    }
+  },
+  "pending_review": {
+    "lz_164941": {
+      "title": "Song Thù Cung Lan Mộng",
+      "raw_title": "双姝宫阑梦",
+      "package_path": "C:\\Users\\ngu06\\Documents\\antigravity\\friendly-euclid\\output\\双姝宫阑梦_20261122_234914",
+      "qa_passed": true,
+      "coverage_percent": 86.5,
+      "schedule_slot": "2026-11-23T11:30:00+07:00",
+      "created_at": "2026-11-22T23:58:15.306422"
+    },
+    "lz_167423": {
+      "title": "Tiểu Thư Thật Đã Rời Núi",
+      "raw_title": "被认回时真千金已考出小山村",
+      "package_path": "C:\\Users\\ngu06\\Documents\\antigravity\\friendly-euclid\\output\\被认回时真千金已考出小山村_20261123_011516",
+      "qa_passed": true,
+      "coverage_percent": 88.6,
+      "schedule_slot": "2026-11-23T17:30:00+07:00",
+      "created_at": "2026-11-23T01:38:33.675704"
+    }
+  },
+  "completed": {},
+  "last_updated": "2026-11-23T01:38:33.675704"
+}

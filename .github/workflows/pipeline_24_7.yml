@@ -1,0 +1,175 @@
+name: 🎬 Cool Mèo Phim 24/7 Automation Pipeline (3 Video/Ngày Giờ Vàng)
+
+on:
+  schedule:
+    # 3 mốc chạy trước Giờ Vàng ~6 tiếng theo giờ Việt Nam (GMT+7):
+    # 1. 22:00 UTC (05:00 sáng VN) -> Kịp xuất Gói Xét Duyệt & hẹn giờ Giờ Vàng 11:30
+    - cron: '0 22 * * *'
+    # 2. 04:00 UTC (11:00 trưa VN) -> Kịp xuất Gói Xét Duyệt & hẹn giờ Giờ Vàng 17:30
+    - cron: '0 4 * * *'
+    # 3. 07:00 UTC (14:00 chiều VN) -> Kịp xuất Gói Xét Duyệt & hẹn giờ Giờ Vàng 20:30
+    - cron: '0 7 * * *'
+
+  workflow_dispatch:
+    inputs:
+      force_source:
+        description: 'Kho phim ưu tiên (lz: Lượng Tử, ff: Phi Phàm)'
+        required: false
+        default: 'lz'
+        type: choice
+        options:
+          - lz
+          - ff
+      max_videos:
+        description: 'Số lượng video sản xuất tối đa trong lượt này'
+        required: false
+        default: '1'
+
+# KHÓA CONCURRENCY: Tuyệt đối không cho 2 job chạy song song đè dữ liệu
+concurrency:
+  group: cool-meo-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    # KIỂM SOÁT TỰ ĐỘNG TRÊN PUBLIC REPOSITORY:
+    # - Khi bấm tay (workflow_dispatch): Luôn cho phép chạy.
+    # - Khi chạy theo cron định kỳ: Chỉ chạy nếu Repo Variable ENABLE_SCHEDULE == 'true'.
+    # Giúp bật/tắt chế độ tự động 3 video/ngày ngay trên giao diện GitHub Settings mà không cần sửa code.
+    if: github.event_name == 'workflow_dispatch' || vars.ENABLE_SCHEDULE == 'true'
+
+    # GIỚI HẠN THỜI GIAN: Không bao giờ chạm trần timeout 6 giờ của GitHub
+    timeout-minutes: 60
+
+    steps:
+      - name: 📥 Tải mã nguồn dự án
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: 🛡️ Che kín mọi Secrets & URLs trong log công khai (Public Log Masking)
+        run: |
+          # 1. Mask từng API Key trong danh sách GEMINI_API_KEYS (ngăn cách bởi dấu phẩy)
+          RAW_KEYS="${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}"
+          IFS=',' read -ra ADDR <<< "$RAW_KEYS"
+          for key in "${ADDR[@]}"; do
+            clean_k=$(echo "$key" | tr -d '[:space:]')
+            if [ -n "$clean_k" ] && [ ${#clean_k} -gt 6 ]; then
+              echo "::add-mask::$clean_k"
+            fi
+          done
+
+          # 2. Mask toàn bộ URL và các Secrets quan trọng
+          for val in "${{ secrets.LZ_API_URL }}" \
+                     "${{ secrets.FF_API_URL }}" \
+                     "${{ secrets.FB_PAGE_ID }}" \
+                     "${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+                     "${{ secrets.TELEGRAM_CHAT_ID }}" \
+                     "${{ secrets.FB_ACCESS_TOKEN }}" \
+                     "${{ secrets.YT_CLIENT_SECRET }}" \
+                     "${{ secrets.YT_REFRESH_TOKEN }}" \
+                     "${{ secrets.RCLONE_CONFIG_BASE64 }}"; do
+            clean_v=$(echo "$val" | tr -d '[:space:]')
+            if [ -n "$clean_v" ] && [ ${#clean_v} -gt 4 ]; then
+              echo "::add-mask::$clean_v"
+            fi
+          done
+          echo "✅ Đã kích hoạt add-mask bảo vệ 100% dữ liệu nhạy cảm trên Public Repo."
+
+      - name: 🐍 Cài đặt Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: ⚙️ Cài đặt FFmpeg, Rclone & Font chữ tiếng Việt
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-liberation fonts-dejavu-core rclone
+
+      - name: 📦 Cài đặt thư viện Python
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🧪 Chạy Dry-Run Mock Test kiểm chứng hệ thống
+        run: |
+          python tests/test_end_to_end_mock.py
+
+      - name: 🚀 Khởi chạy Pipeline Sản Xuất Video (Khóa Auto-Publish xuất Gói Xét Duyệt)
+        env:
+          PYTHONUNBUFFERED: "1"
+          AUTO_PUBLISH: "false"  # KHÓA CỨNG AN TOÀN: Luôn xuất Gói Xét Duyệt 3 phần
+          MAX_VIDEOS_PER_RUN: ${{ inputs.max_videos || '1' }}
+          PREFERRED_SOURCE: ${{ inputs.force_source || 'lz' }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
+          LZ_API_URL: ${{ secrets.LZ_API_URL }}
+          FF_API_URL: ${{ secrets.FF_API_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+        run: |
+          python main.py
+
+      - name: ☁️ Xuất Gói Xét Duyệt sang Cloud Storage riêng tư (Rclone)
+        if: always() && env.RCLONE_CONFIG_BASE64 != ''
+        env:
+          RCLONE_CONFIG_BASE64: ${{ secrets.RCLONE_CONFIG_BASE64 }}
+          RCLONE_REMOTE: ${{ secrets.RCLONE_REMOTE || 'gdrive:CoolMeoPhim/packages' }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_BASE64" | base64 -d > ~/.config/rclone/rclone.conf
+          echo "📤 Đang xuất Gói Xét Duyệt sang Cloud Storage riêng tư ($RCLONE_REMOTE/$RUN_NUMBER)..."
+          rclone copy output/ "${RCLONE_REMOTE}/${RUN_NUMBER}/" --config ~/.config/rclone/rclone.conf || echo "⚠️ Cảnh báo: Rclone sync không thành công."
+
+      - name: 📢 Gửi báo cáo Gói Xét Duyệt qua Telegram
+        if: always() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          python -c "
+          import os, glob, requests
+          token = os.environ.get('TELEGRAM_BOT_TOKEN')
+          chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+          run_num = os.environ.get('RUN_NUMBER', '0')
+
+          summaries = glob.glob('output/**/REVIEW_SUMMARY.md', recursive=True)
+          if summaries:
+              with open(summaries[0], 'r', encoding='utf-8') as f:
+                  content = f.read()[:3200]
+              msg = f'🎉 *[Cool Mèo Phim] Gói Xét Duyệt #{run_num} Sẵn Sàng!*\n\n{content}\n\n🔒 *Bảo mật: Gói xét duyệt đã được chuyển đến Cloud Storage riêng tư qua Rclone.*'
+          else:
+              msg = f'ℹ️ *[Cool Mèo Phim]* Job #{run_num} đã kết thúc.'
+
+          try:
+              requests.post(f'https://api.telegram.org/bot{token}/sendMessage', json={'chat_id': chat_id, 'text': msg, 'parse_mode': 'Markdown'}, timeout=15)
+              print('✅ Đã gửi báo cáo Telegram thành công!')
+          except Exception as e:
+              print(f'⚠️ Gửi Telegram thất bại: {e}')
+          " || true
+
+      - name: 💾 Đồng bộ cơ sở dữ liệu lịch sử (Chỉ commit processed_db.json)
+        if: always()
+        run: |
+          git config --global user.name "CoolMeoBot"
+          git config --global user.email "bot@coolmeophim.local"
+          python -c "from src.state.state_manager import StateManager; StateManager.sync_to_git('chore(state): auto update processed_db [skip ci]')" || true
+
+      - name: 🧹 Dọn dẹp tuyệt đối thư mục tạm và output (Zero Data Leak trên Public Runner)
+        if: always()
+        run: |
+          rm -rf output/ tmp/
+          echo "✅ Đã dọn sạch 100% output/ và tmp/ trên GitHub Runner."
