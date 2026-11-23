@@ -15,25 +15,54 @@ class Downloader:
     """
 
     @classmethod
+    def _fetch_text(cls, url: str, timeout: int = 15) -> str:
+        """Tải nội dung text (M3U8 manifest hoặc HTML) bằng curl (vượt qua WAF chặn fingerprint Python urllib)."""
+        # 1. Thử dùng curl (ưu tiên tuyệt đối vì vượt qua TLS fingerprint check của Alibaba Cloud / Cloudflare)
+        try:
+            curl_bin = "curl.exe" if os.name == "nt" else "curl"
+            curl_cmd = [
+                curl_bin, "-s", "-L", "-m", str(timeout),
+                "-A", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"
+            ]
+            if "ffzy" in url:
+                curl_cmd.extend(["-H", "Referer: https://ffzy1.tv/"])
+
+            proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+            if proxy and proxy.startswith("http://"):
+                curl_cmd.extend(["-x", proxy])
+
+            curl_cmd.append(url)
+            res = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=timeout + 2)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout
+        except Exception:
+            pass
+
+        # 2. Dự phòng bằng urllib nếu không có curl
+        try:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"}
+            if "ffzy" in url:
+                headers["Referer"] = "https://ffzy1.tv/"
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read().decode("utf-8", errors="ignore")
+        except Exception as e:
+            print(f"[Downloader] Lỗi tải URL {url}: {e}")
+            return ""
+
+    @classmethod
     def resolve_stream_url(cls, m3u8_url: str) -> str:
         """Phân giải master playlist hoặc link share để lấy direct stream URL."""
         # 1. Nếu là link share (Liangzi), tải trang share để lấy link M3U8 có chữ ký (?sign=...)
         if "/share/" in m3u8_url:
-            try:
-                req = urllib.request.Request(
-                    m3u8_url,
-                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"}
-                )
-                with urllib.request.urlopen(req, timeout=12) as resp:
-                    html = resp.read().decode("utf-8", errors="ignore")
-                    m = re.search(r'var\s+main\s*=\s*["\']([^"\']+)["\']', html)
-                    if m:
-                        main_path = m.group(1)
-                        parsed = urllib.parse.urlparse(m3u8_url)
-                        m3u8_url = f"{parsed.scheme}://{parsed.netloc}{main_path}"
-                        print(f"[Downloader] Phân giải thành công link có chữ ký: {m3u8_url}")
-            except Exception as e:
-                print(f"[Downloader] Lỗi phân giải share page {m3u8_url}: {e}")
+            html = cls._fetch_text(m3u8_url, timeout=12)
+            if html:
+                m = re.search(r'var\s+main\s*=\s*["\']([^"\']+)["\']', html)
+                if m:
+                    main_path = m.group(1)
+                    parsed = urllib.parse.urlparse(m3u8_url)
+                    m3u8_url = f"{parsed.scheme}://{parsed.netloc}{main_path}"
+                    print(f"[Downloader] Phân giải thành công link có chữ ký: {m3u8_url}")
             if "/share/" in m3u8_url:
                 print(f"[Downloader] Link share không trích xuất được stream m3u8: {m3u8_url}")
                 return ""
@@ -42,15 +71,8 @@ class Downloader:
             return m3u8_url.replace("/index.m3u8", "/2000k/hls/index.m3u8")
 
         try:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"
-            }
-            if "ffzy" in m3u8_url:
-                headers["Referer"] = "https://ffzy1.tv/"
-
-            req = urllib.request.Request(m3u8_url, headers=headers)
-            with urllib.request.urlopen(req, timeout=12) as resp:
-                text = resp.read().decode("utf-8", errors="ignore")
+            text = cls._fetch_text(m3u8_url, timeout=12)
+            if text:
                 base = m3u8_url.rsplit("/", 1)[0]
                 query = urllib.parse.urlparse(m3u8_url).query
                 for line in text.splitlines():
@@ -76,15 +98,10 @@ class Downloader:
         sau thẻ #EXT-X-DISCONTINUITY có thời lượng bất thường (5s - 20s) hoặc domain lạ.
         """
         try:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"
-            }
-            if "ffzy" in stream_url:
-                headers["Referer"] = "https://ffzy1.tv/"
-
-            req = urllib.request.Request(stream_url, headers=headers)
-            with urllib.request.urlopen(req, timeout=12) as resp:
-                content = resp.read().decode("utf-8", errors="ignore")
+            content = cls._fetch_text(stream_url, timeout=12)
+            if not content:
+                print(f"[Downloader] Không tải được manifest stream {stream_url}. Sử dụng luồng trực tiếp.")
+                return stream_url
 
             base_url = stream_url.rsplit("/", 1)[0]
             query = urllib.parse.urlparse(stream_url).query
@@ -312,6 +329,17 @@ class Downloader:
         """Tải ảnh poster của phim để làm nguyên liệu thiết kế thumbnail."""
         if not poster_url or not poster_url.startswith("http"):
             return False
+        # 1. Thử tải bằng curl
+        try:
+            curl_bin = "curl.exe" if os.name == "nt" else "curl"
+            cmd = [curl_bin, "-s", "-L", "-m", "15", "-A", "Mozilla/5.0", "-o", output_path, poster_url]
+            res = subprocess.run(cmd, capture_output=True, timeout=18)
+            if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+                return True
+        except Exception:
+            pass
+
+        # 2. Dự phòng bằng urllib
         try:
             req = urllib.request.Request(
                 poster_url,
