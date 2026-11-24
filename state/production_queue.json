@@ -24,7 +24,7 @@
       "m3u8_groups": [
         "https://lzv34.com/20261123/15525_c547f829/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-24T21:08:39.918246"
     },
     {
@@ -51,7 +51,7 @@
       "m3u8_groups": [
         "https://lzv34.com/20261123/15519_e35532c1/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-24T21:08:39.918246"
     },
     {
@@ -78,7 +78,7 @@
       "m3u8_groups": [
         "https://lzv34.com/20261123/15545_47b894be/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-24T21:10:00"
     },
     {
@@ -835,10 +835,10 @@
         "https://v.lfthirtytwo.com/20261115/12028_7367ed9c/index.m3u8",
         "https://v.lfthirtytwo.com/20261115/12027_28fe9973/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-24T21:08:39.918246"
     }
   ],
   "total_items": 15,
-  "last_updated": "2026-11-24T21:10:00"
+  "last_updated": "2026-11-24T22:19:33.268006"
 }
