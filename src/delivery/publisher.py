@@ -183,7 +183,7 @@ class Publisher:
         """
         Quy trình upload YouTube 2 pha chuẩn:
         - Pha 1: Upload video ở trạng thái 'private', CHƯA gán publishAt.
-        - Pha 2: Tự khám Content ID (poll status & contentDetails trong tối đa 6 phút).
+        - Pha 2: Tự khám Content ID (bắt buộc ngâm tối thiểu 6 phút sau khi processed, chu kỳ poll 45s).
           + Nếu BỊ CHẶN: Tự động gọi youtube.videos().delete(id=video_id) xóa sạch khỏi kênh, báo Telegram và trả về copyright_blocked=True.
           + Nếu SẠCH BẢN QUYỀN: Gán lịch Giờ Vàng publishAt và cập nhật Custom Thumbnail 3 tầng.
         """
@@ -253,17 +253,20 @@ class Publisher:
 
         # PHA 2: TỰ KHÁM CONTENT ID VÀ TỰ XÓA NẾU BỊ CHẶN
         if not skip_audit:
-            print(f"[YouTube Audit] Bắt đầu Pha 2: Tự khám Content ID cho video {video_id} (tối đa 6 phút)...")
-            max_audit_seconds = 360  # tối đa 6 phút
-            poll_interval = 30
-            elapsed = 0
+            MIN_CONTENT_ID_SOAK_SEC = 360  # Bắt buộc ngâm tối thiểu 6 phút sau khi processed
+            POLL_INTERVAL = 45  # Chu kỳ kiểm tra 45 giây/lần
+            print(f"[YouTube Audit] Bắt đầu Pha 2: Tự khám Content ID cho video {video_id} (bắt buộc ngâm tối thiểu {MIN_CONTENT_ID_SOAK_SEC}s sau khi processed)...")
+            
+            total_elapsed = 0
+            processed_at_elapsed = None
+            soak_elapsed = 0
             is_blocked = False
             block_reason = ""
-            is_processed = False
+            max_total_wait = 1200  # Giới hạn an toàn tối đa 20 phút nếu YouTube processing quá lâu
 
-            while elapsed < max_audit_seconds:
-                time.sleep(poll_interval)
-                elapsed += poll_interval
+            while True:
+                time.sleep(POLL_INTERVAL)
+                total_elapsed += POLL_INTERVAL
 
                 try:
                     v_res = youtube.videos().list(
@@ -280,15 +283,25 @@ class Publisher:
                     v_cd = v_item.get("contentDetails", {})
                     upload_status = v_status.get("uploadStatus", "")
                     rejection_reason = v_status.get("rejectionReason", "")
+                    licensed_content = v_cd.get("licensedContent", False)
                     region_restriction = v_cd.get("regionRestriction", {})
 
                     blocked_regions = region_restriction.get("blocked", [])
                     allowed_regions = region_restriction.get("allowed", [])
 
+                    if upload_status == "processed":
+                        if processed_at_elapsed is None:
+                            processed_at_elapsed = total_elapsed
+                            print(f"[YouTube Audit] 🎯 Video đã 'processed' tại mốc {total_elapsed}s! Bắt đầu đếm ngược ngâm Content ID tối thiểu {MIN_CONTENT_ID_SOAK_SEC}s (6 phút)...")
+                        soak_elapsed = total_elapsed - processed_at_elapsed
+                        status_prefix = f"đã ngâm {soak_elapsed}s/{MIN_CONTENT_ID_SOAK_SEC}s"
+                    else:
+                        status_prefix = f"chờ processed (tổng {total_elapsed}s)"
+
                     print(
-                        f"[YouTube Audit] ({elapsed}s/{max_audit_seconds}s) "
-                        f"uploadStatus: '{upload_status}', rejectionReason: '{rejection_reason}', "
-                        f"quốc gia bị chặn: {len(blocked_regions)}"
+                        f"[YouTube Audit] ({total_elapsed}s | {status_prefix}) "
+                        f"uploadStatus: '{upload_status}', licensedContent: {licensed_content}, "
+                        f"rejectionReason: '{rejection_reason}', quốc gia bị chặn: {len(blocked_regions)}"
                     )
 
                     # 1. Bị từ chối do bản quyền
@@ -312,12 +325,14 @@ class Publisher:
                         block_reason = f"Chặn hiển thị tại Việt Nam (danh sách cho phép không có VN)"
                         break
 
-                    # 4. Khi YouTube đã xử lý xong (processed) và sau ít nhất 60s không thấy hạn chế
-                    if upload_status == "processed":
-                        is_processed = True
-                        if elapsed >= 60:
-                            print(f"[YouTube Audit] ✅ Video đã được YouTube xử lý xong (processed) và sạch bản quyền sau {elapsed}s.")
-                            break
+                    # 4. Khi YouTube đã processed VÀ đã ngâm đủ MIN_CONTENT_ID_SOAK_SEC (6 phút)
+                    if upload_status == "processed" and soak_elapsed >= MIN_CONTENT_ID_SOAK_SEC:
+                        print(f"[YouTube Audit] ✅ Video đã ngâm đủ {MIN_CONTENT_ID_SOAK_SEC}s ({MIN_CONTENT_ID_SOAK_SEC//60} phút) sau khi processed và SẠCH BẢN QUYỀN 100%!")
+                        break
+
+                    if total_elapsed >= max_total_wait:
+                        print(f"[YouTube Audit] ⚠️ Đã chạm ngưỡng thời gian tối đa {max_total_wait}s. Dừng chờ ngâm.")
+                        break
 
                 except Exception as audit_err:
                     print(f"[YouTube Audit] Cảnh báo lỗi truy vấn trạng thái: {audit_err}")
