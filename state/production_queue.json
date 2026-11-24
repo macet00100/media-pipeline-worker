@@ -39,7 +39,7 @@
         "https://v.lzcdn27.com/20261103/21189_749f23aa/index.m3u8",
         "https://v.lzcdn27.com/20261103/21188_28230075/index.m3u8"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-23T16:25:56.771531"
     },
     {
@@ -66,7 +66,7 @@
       "m3u8_groups": [
         "https://lzv34.com/share/28c1e04ceae885ace553dd756e8e54b"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-24T08:00:00"
     },
     {
@@ -93,7 +93,7 @@
       "m3u8_groups": [
         "https://lzv34.com/share/e5732492e9d1ef72fee339a293b2f9e"
       ],
-      "status": "queued",
+      "status": "failed",
       "queued_at": "2026-11-24T08:00:00"
     },
     {
@@ -637,6 +637,6 @@
       "queued_at": "2026-11-23T18:26:20.803534"
     }
   ],
-  "total_items": 7,
-  "last_updated": "2026-11-23T22:26:51.686015"
+  "total_items": 8,
+  "last_updated": "2026-11-24T04:19:21.557151"
 }
