@@ -31,7 +31,7 @@ on:
 
 # KHÓA CONCURRENCY: Tuyệt đối không cho 2 job chạy song song đè dữ liệu
 concurrency:
-  group: cool-meo-pipeline
+  group: cool-meo-phim-pipeline-singleton
   cancel-in-progress: false
 
 permissions:
