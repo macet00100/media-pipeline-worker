@@ -111,7 +111,7 @@ class CMSClient:
                     continue
 
                 # Bóc tách link m3u8 direct (ưu tiên lzm3u8, loại bỏ 100% link /share/)
-                play_from = it.get("vod_play_from", "") or ""
+                play_from = item.get("vod_play_from", "") or ""
                 m3u8_groups = cls._extract_m3u8_groups(play_url, play_from)
                 if not m3u8_groups:
                     continue

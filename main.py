@@ -650,7 +650,7 @@ def main():
 
     if args.curate_only:
         print("[MAIN] Thực thi chế độ Curate-Only...")
-        MovieCurator.run_curation_cli()
+        MovieCurator.run_curation_pipeline()
         return
 
     # Lấy danh sách phim từ hàng chờ hoặc giám tuyển mới
@@ -717,14 +717,27 @@ def main():
             except Exception as e:
                 print(f"[MAIN] Lỗi đọc queue file: {e}")
 
-        if not candidates_to_try:
-            print("[MAIN] Hàng chờ trống (hoặc ứng viên đã xử lý). Đang quét và tuyển chọn Top 3 phim mới hôm nay...")
+        # Tự động nạp bổ sung nếu hàng chờ có dưới 3 phim queued (tránh cạn kiệt hàng chờ)
+        if len(candidates_to_try) < 3:
+            print(f"[MAIN] Hàng chờ chỉ còn {len(candidates_to_try)} phim queued (< 3). Tự động quét và nạp bổ sung ứng viên mới...")
             curation_res = MovieCurator.run_curation_pipeline()
             ignored = StateManager.get_ignored_ids()
-            candidates_to_try = [
-                m for m in curation_res.get("selected", [])
-                if m.get("id") not in ignored
-            ]
+            if q_file.exists():
+                try:
+                    with open(q_file, "r", encoding="utf-8") as f:
+                        q_data = json.load(f)
+                        candidates_to_try = [
+                            m for m in q_data.get("queue", [])
+                            if m.get("status", "queued") == "queued" and m.get("id") not in ignored
+                        ]
+                except Exception as e:
+                    print(f"[MAIN] Lỗi đọc lại queue file: {e}")
+
+            if not candidates_to_try:
+                candidates_to_try = [
+                    m for m in curation_res.get("selected", [])
+                    if m.get("id") not in ignored
+                ]
 
     if not candidates_to_try:
         print("[MAIN] Không tìm thấy phim nào phù hợp để sản xuất.")

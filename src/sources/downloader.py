@@ -264,48 +264,69 @@ class Downloader:
             headers_list.append("Referer: https://ffzy1.tv/")
 
         headers_str = "\r\n".join(headers_list) + "\r\n"
-
-        cmd = ["ffmpeg", "-y"]
-
-        # Chỉ truyền các tùy chọn giao thức HTTP (-headers, -rw_timeout) khi input là URL trực tiếp (http/https).
-        # Khi input là file manifest m3u8 cục bộ, FFmpeg trên Linux sẽ báo lỗi 'Option headers not found'.
-        if stream_url.startswith("http://") or stream_url.startswith("https://"):
-            proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
-            if proxy and proxy.startswith("http://"):
-                cmd.extend(["-http_proxy", proxy])
-            if headers_str.strip():
-                cmd.extend(["-headers", headers_str, "-rw_timeout", "15000000"])
-
-        cmd.extend([
-            "-allowed_extensions", "ALL",
-            "-protocol_whitelist", "file,http,https,tcp,tls,crypto,httpproxy,data",
-            "-i", stream_url,
-            "-t", str(max_seconds),
-            "-c", "copy",
-            "-bsf:a", "aac_adtstoasc",
-            output_path
-        ])
+        base_proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
 
         max_attempts = 3
         for attempt in range(1, max_attempts + 1):
+            cmd = ["ffmpeg", "-y"]
+
+            # Cờ FFmpeg chống treo luồng TCP/HTTP: tự động reconnect và ngắt nếu 30s không nhận dữ liệu (-rw_timeout 30000000 us)
+            cmd.extend([
+                "-reconnect", "1",
+                "-reconnect_at_eof", "1",
+                "-reconnect_streamed", "1",
+                "-reconnect_delay_max", "5",
+                "-rw_timeout", "30000000"
+            ])
+
+            if headers_str.strip():
+                cmd.extend(["-headers", headers_str])
+
+            # Lần 1: Tải TRỰC TIẾP (ưu tiên tốc độ cao, không qua Tor).
+            # Lần 2 & 3: Dự phòng kích hoạt Tor proxy và đổi mạch IP nếu gặp lỗi chặn/timeout.
+            use_tor = (attempt > 1) and bool(base_proxy)
+            run_env = os.environ.copy()
+
+            if use_tor:
+                print(f"[Downloader] 🧅 Lần thử {attempt}/{max_attempts}: Kích hoạt định tuyến qua Tor proxy ({base_proxy})...")
+                cls.reload_tor_circuit()
+                if base_proxy.startswith("http://"):
+                    cmd.extend(["-http_proxy", base_proxy])
+                run_env["http_proxy"] = base_proxy
+                run_env["HTTP_PROXY"] = base_proxy
+                run_env["https_proxy"] = base_proxy
+                run_env["HTTPS_PROXY"] = base_proxy
+            else:
+                print(f"[Downloader] ⚡ Lần thử {attempt}/{max_attempts}: Tải TRỰC TIẾP (ưu tiên tốc độ cao, không qua Tor)...")
+                # Xóa sạch proxy khỏi môi trường subprocess để ép FFmpeg đi trực tiếp
+                for k in ["http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY"]:
+                    run_env.pop(k, None)
+
+            cmd.extend([
+                "-allowed_extensions", "ALL",
+                "-protocol_whitelist", "file,http,https,tcp,tls,crypto,httpproxy,data",
+                "-i", stream_url,
+                "-t", str(max_seconds),
+                "-c", "copy",
+                "-bsf:a", "aac_adtstoasc",
+                output_path
+            ])
+
             try:
-                res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                res = subprocess.run(cmd, env=run_env, capture_output=True, text=True, timeout=240)
                 if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000000:
                     elapsed = round(time.time() - t0, 1)
                     size_mb = round(os.path.getsize(output_path) / (1024 * 1024), 1)
-                    print(f"[Downloader] Tải thành công ({size_mb} MB trong {elapsed}s, lần thử {attempt})")
+                    mode_str = "qua Tor" if use_tor else "trực tiếp"
+                    print(f"[Downloader] ✅ Tải thành công {mode_str} ({size_mb} MB trong {elapsed}s, lần thử {attempt})")
                     return True
                 else:
                     err_msg = res.stderr[-300:] if res.stderr else "Unknown error"
-                    print(f"[Downloader] FFmpeg tải thất bại (lần {attempt}/{max_attempts}): {err_msg}")
-                    if "403" in err_msg or "Forbidden" in err_msg or "Connection timed out" in err_msg or "Server returned 4" in err_msg:
-                        cls.reload_tor_circuit()
+                    print(f"[Downloader] ⚠️ FFmpeg tải thất bại (lần {attempt}/{max_attempts}): {err_msg.strip()}")
             except subprocess.TimeoutExpired:
-                print(f"[Downloader] FFmpeg timeout 300s (lần {attempt}/{max_attempts})")
-                cls.reload_tor_circuit()
+                print(f"[Downloader] ⚠️ FFmpeg timeout sau 240s (lần {attempt}/{max_attempts})")
             except Exception as e:
-                print(f"[Downloader] Ngoại lệ khi tải m3u8 (lần {attempt}/{max_attempts}): {e}")
-                cls.reload_tor_circuit()
+                print(f"[Downloader] ⚠️ Ngoại lệ khi tải m3u8 (lần {attempt}/{max_attempts}): {e}")
 
             if attempt < max_attempts:
                 time.sleep(2)

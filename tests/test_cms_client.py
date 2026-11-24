@@ -70,6 +70,32 @@ class TestCMSClientAndCuratorLinkSafety(unittest.TestCase):
             self.assertTrue(is_alive)
             self.assertEqual(reason, "ok")
 
+    def test_preflight_check_m3u8_ts_sample_verification(self):
+        """Kiểm tra preflight_check_m3u8 tải thử mẫu 256 KB phân đoạn .ts và bắt lỗi tốc độ."""
+        # 1. Trả về manifest chứa URL .ts thật
+        manifest_data = b"#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:10.0,\nhttps://speed-cdn.com/seg1.ts"
+        # 256 KB dữ liệu mẫu
+        sample_ts_data = b"0" * (256 * 1024)
+
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_manifest_resp = MagicMock()
+            mock_manifest_resp.status = 200
+            mock_manifest_resp.read.return_value = manifest_data
+
+            mock_ts_resp = MagicMock()
+            mock_ts_resp.status = 200
+            mock_ts_resp.read.side_effect = [sample_ts_data[:65536], sample_ts_data[65536:131072], sample_ts_data[131072:], b""]
+
+            # Lần gọi 1 là manifest, lần gọi 2 là .ts
+            mock_urlopen.side_effect = [
+                MagicMock(__enter__=MagicMock(return_value=mock_manifest_resp)),
+                MagicMock(__enter__=MagicMock(return_value=mock_ts_resp))
+            ]
+
+            is_alive, reason = MovieCurator.preflight_check_m3u8(["https://speed-cdn.com/index.m3u8"])
+            self.assertTrue(is_alive)
+            self.assertEqual(reason, "ok")
+
     def test_short_drama_one_file_priority_in_selection(self):
         """Kiểm tra đoản kịch trọn bộ 1 file (<= 5 tập) được ưu tiên hàng đầu khi chọn Top 3."""
         candidates = [

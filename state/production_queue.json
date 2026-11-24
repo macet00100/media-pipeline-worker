@@ -1,6 +1,87 @@
 {
   "queue": [
     {
+      "id": "lz_167951",
+      "vod_id": "167951",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "离婚当天，妻子家天塌了",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 79,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 20,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 79,
+        "reasoning": "Phim có đề tài viral [离婚], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261124-1/85f8399b1a1edbda3740c77d4e538058.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15525_c547f829/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-24T21:08:39.918246"
+    },
+    {
+      "id": "lz_167946",
+      "vod_id": "167946",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "满级下山，这个男人有点狂",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 79,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 20,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 79,
+        "reasoning": "Phim có đề tài viral [下山], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261124-1/5ae4149ea721c6f91868c297b3c2f7f1.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15519_e35532c1/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-24T21:08:39.918246"
+    },
+    {
+      "id": "lz_167972",
+      "vod_id": "167972",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "她的花开",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Đoản kịch trọn bộ 1 file Full HD, link direct m3u8 xác thực sống 100% (tải mẫu .ts > 1.1 MB/s)."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261124-1/22281b0c4d8fb1f05bfbf4c31b619e3d.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15545_47b894be/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-24T21:10:00"
+    },
+    {
       "id": "lz_167732",
       "vod_id": "167732",
       "source_id": "lz",
@@ -716,8 +797,48 @@
       ],
       "status": "failed",
       "queued_at": "2026-11-23T18:26:20.803534"
+    },
+    {
+      "id": "lz_166636",
+      "vod_id": "166636",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "补形追凶",
+      "category": "long_series",
+      "episodes_count": 14,
+      "total_episodes": 14,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 79,
+      "curation_details": {
+        "hook_score": 25,
+        "viral_score": 20,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 79,
+        "reasoning": "Phim có đề tài viral [千金], yếu tố hook kịch tính [阴谋], độ trọn vẹn 14 tập (Đã Full), nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261115-1/c0cb6492fe238acf5cd78b0951c61345.png",
+      "m3u8_groups": [
+        "https://v.lfthirtytwo.com/20261115/12038_168810fa/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12039_32dfc866/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12036_a60ebbba/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12037_60246519/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12035_57ad2021/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12040_0283303f/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12034_56b9c767/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12033_d69eb9a5/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12032_89418781/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12031_e69fc561/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12030_5d3ed543/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12029_162b08a4/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12028_7367ed9c/index.m3u8",
+        "https://v.lfthirtytwo.com/20261115/12027_28fe9973/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-24T21:08:39.918246"
     }
   ],
-  "total_items": 11,
-  "last_updated": "2026-11-24T07:33:40.851365"
+  "total_items": 15,
+  "last_updated": "2026-11-24T21:10:00"
 }
