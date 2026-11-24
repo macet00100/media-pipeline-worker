@@ -2,7 +2,7 @@ import os
 import json
 import urllib.request
 import urllib.parse
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from config.settings import Settings
 from src.state.state_manager import StateManager
 
@@ -110,8 +110,9 @@ class CMSClient:
                     StateManager.mark_failed(movie_id, "copyright_blacklisted", vod_name)
                     continue
 
-                # Bóc tách link m3u8
-                m3u8_groups = cls._extract_m3u8_groups(play_url)
+                # Bóc tách link m3u8 direct (ưu tiên lzm3u8, loại bỏ 100% link /share/)
+                play_from = it.get("vod_play_from", "") or ""
+                m3u8_groups = cls._extract_m3u8_groups(play_url, play_from)
                 if not m3u8_groups:
                     continue
 
@@ -141,34 +142,53 @@ class CMSClient:
         return candidates[:limit]
 
     @classmethod
-    def _extract_m3u8_groups(cls, play_url: str) -> List[str]:
-        """Trích xuất danh sách link phát chuẩn (m3u8 hoặc share có ký danh) từ chuỗi vod_play_url."""
+    def _extract_m3u8_groups(cls, play_url: str, play_from: str = "") -> List[str]:
+        """
+        Trích xuất danh sách link phát chuẩn direct .m3u8 từ chuỗi vod_play_url và vod_play_from.
+        - Ưu tiên nhóm player 'lzm3u8' (Lượng Tử direct m3u8) hoặc player có 'm3u8'.
+        - Tuyệt đối loại bỏ mọi URL chứa '/share/' hoặc không có '.m3u8'.
+        """
         if not play_url:
             return []
 
-        groups = []
-        for grp in play_url.split("$$$"):
+        from_list = [f.strip() for f in play_from.split("$$$")] if play_from else []
+        url_groups_raw = play_url.split("$$$")
+
+        parsed_groups: List[Tuple[str, List[str]]] = []
+
+        for idx, grp in enumerate(url_groups_raw):
+            player_name = from_list[idx].lower() if idx < len(from_list) else ""
             urls = []
             for ep in grp.split("#"):
-                if ".m3u8" in ep.lower() or "/share/" in ep.lower():
+                # Tuyệt đối loại bỏ URL dạng /share/...
+                if "/share/" in ep.lower():
+                    continue
+                if ".m3u8" in ep.lower():
                     for part in ep.split("$"):
                         part = part.strip()
-                        if part.startswith("http") and (".m3u8" in part.lower() or "/share/" in part.lower()):
+                        if part.startswith("http") and ".m3u8" in part.lower() and "/share/" not in part.lower():
                             urls.append(part)
                             break
             if urls:
-                groups.append(urls)
+                parsed_groups.append((player_name, urls))
 
-        if not groups:
+        if not parsed_groups:
             return []
 
-        # Ưu tiên nhóm direct m3u8 (luồng video trực tiếp, sạch, tốc độ cao)
-        for g in groups:
-            if any("/202" in u or "index.m3u8" in u or "mixed" in u for u in g):
-                return g
+        # 1. Ưu tiên player có tên 'lzm3u8' (Lượng Tử direct m3u8 chuẩn nhất)
+        for p_name, urls in parsed_groups:
+            if "lzm3u8" in p_name:
+                return urls
 
-        # Tiếp theo mới tới nhóm share URL
-        for g in groups:
-            if any("/share/" in u for u in g):
-                return g
-        return groups[0]
+        # 2. Ưu tiên player có chữ 'm3u8' trong tên
+        for p_name, urls in parsed_groups:
+            if "m3u8" in p_name:
+                return urls
+
+        # 3. Ưu tiên nhóm có link chứa index.m3u8 hoặc /202...
+        for _, urls in parsed_groups:
+            if any("/202" in u or "index.m3u8" in u or "mixed" in u for u in urls):
+                return urls
+
+        # 4. Trả về nhóm đầu tiên còn lại (đều đã được lọc sạch .m3u8, không có /share/)
+        return parsed_groups[0][1]

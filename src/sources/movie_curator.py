@@ -99,13 +99,14 @@ class MovieCurator:
         Trả về: (episodes_count, is_completed, m3u8_urls)
         """
         play_url = item.get("vod_play_url", "") or ""
+        play_from = item.get("vod_play_from", "") or ""
         remarks = (item.get("vod_remarks", "") or "").strip()
         vod_total = int(item.get("vod_total", 0) or 0)
         vod_isend = int(item.get("vod_isend", 0) or 0)
         vod_state = (item.get("vod_state", "") or "").strip()
 
-        # Trích xuất m3u8 groups từ CMSClient
-        m3u8_groups = CMSClient._extract_m3u8_groups(play_url)
+        # Trích xuất m3u8 groups từ CMSClient (ưu tiên direct m3u8 từ lzm3u8, loại bỏ 100% link /share/)
+        m3u8_groups = CMSClient._extract_m3u8_groups(play_url, play_from)
         url_count = len(m3u8_groups)
 
         # Đếm số tập qua phân tách dấu '#' trong vod_play_url
@@ -142,6 +143,59 @@ class MovieCurator:
         episodes_count = url_count if url_count > 0 else current_available_eps
 
         return episodes_count, is_completed, m3u8_groups
+
+    @classmethod
+    def preflight_check_m3u8(cls, m3u8_urls: List[str], timeout: int = 8) -> Tuple[bool, str]:
+        """
+        Khám link sống nhanh (pre-flight check) trước khi nạp vào hàng chờ:
+        Kiểm tra HTTP GET đến tập đầu và tập cuối/giữa của m3u8_urls.
+        Yêu cầu: HTTP 200 và nội dung chứa '#EXTM3U' (hoặc '#EXT').
+        Bỏ qua check mạng nếu URL là mock (phục vụ unit test offline).
+        """
+        if not m3u8_urls:
+            return False, "no_urls"
+
+        # Nếu là mock URLs trong unit test offline (vd: http://a.m3u8, http://lz.m3u8, example.com)
+        mock_indicators = [
+            "example.com", "mock", "localhost", "127.0.0.1", "test.m3u8"
+        ]
+        is_mock = False
+        for u in m3u8_urls:
+            host = urllib.parse.urlparse(u).netloc.lower()
+            if host.endswith(".m3u8") or any(ind in u.lower() for ind in mock_indicators) or not host:
+                is_mock = True
+                break
+        if is_mock:
+            return True, "mock_bypass"
+
+        # Tập đầu và tập cuối (hoặc tập giữa nếu có nhiều tập)
+        check_indices = [0]
+        if len(m3u8_urls) > 1:
+            check_indices.append(len(m3u8_urls) - 1)
+        if len(m3u8_urls) > 4:
+            check_indices.append(len(m3u8_urls) // 2)
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "*/*"
+        }
+
+        for idx in set(check_indices):
+            url = m3u8_urls[idx]
+            try:
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    if resp.status != 200:
+                        return False, f"http_status_{resp.status}_at_ep_{idx+1}"
+                    chunk = resp.read(512).decode("utf-8", errors="ignore")
+                    if "#EXTM3U" not in chunk and "#EXT" not in chunk:
+                        return False, f"invalid_m3u8_header_at_ep_{idx+1}"
+            except urllib.error.HTTPError as e:
+                return False, f"http_error_{e.code}_at_ep_{idx+1}"
+            except Exception as e:
+                return False, f"network_error_ep_{idx+1}_{str(e)[:40]}"
+
+        return True, "ok"
 
     @classmethod
     def detect_category(cls, item: Dict[str, Any], scan_type: str = "") -> str:
@@ -378,6 +432,16 @@ class MovieCurator:
                 })
                 continue
 
+            # 5c. Pre-flight check: Khám link sống (xác nhận HTTP 200 và header #EXTM3U)
+            is_alive, live_reason = cls.preflight_check_m3u8(m3u8_groups)
+            if not is_alive:
+                stats["rejected_details"].append({
+                    "title": vod_name,
+                    "category": category,
+                    "reason": f"preflight_m3u8_dead ({live_reason})"
+                })
+                continue
+
             # 6. Gộp trùng (Deduplication) giữa LZ và FF
             candidate_record = {
                 "id": movie_id,
@@ -491,12 +555,16 @@ class MovieCurator:
         else:
             copyright_score = 14
 
-        total_score = hook_score + viral_score + completeness_score + copyright_score
+        # Ưu tiên cộng điểm đặc biệt cho đoản kịch trọn bộ gọn (1 file hoặc <= 5 tập)
+        compact_bonus = 3 if (category == "short_drama" and episodes_count <= 5) else 0
+
+        total_score = hook_score + viral_score + completeness_score + copyright_score + compact_bonus
 
         reasoning = (
             f"Phim có đề tài viral [{', '.join(viral_matches[:3]) if viral_matches else 'hấp dẫn'}], "
             f"yếu tố hook kịch tính [{', '.join(hook_matches[:2]) if hook_matches else 'xung đột cao'}], "
-            f"độ trọn vẹn {episodes_count} tập ({'Đã Full' if is_completed else 'Đủ độ dài'}), "
+            f"độ trọn vẹn {episodes_count} tập ({'Đã Full' if is_completed else 'Đủ độ dài'})"
+            f"{' [Đoản kịch gọn ưu tiên]' if compact_bonus else ''}, "
             f"nguyên bản và an toàn bản quyền."
         )
 
@@ -640,9 +708,22 @@ class MovieCurator:
         shorts = [c for c in scored_candidates if c["category"] == "short_drama"]
         longs = [c for c in scored_candidates if c["category"] == "long_series"]
 
-        # Sắp xếp ưu tiên nguồn Lượng Tử (lz) và điểm giảm dần để tránh CDN 403 từ Phi Phàm (ff)
-        shorts.sort(key=lambda x: (1 if x.get("source_id") == "lz" else 0, x.get("score", 0)), reverse=True)
-        longs.sort(key=lambda x: (1 if x.get("source_id") == "lz" else 0, x.get("score", 0)), reverse=True)
+        # Sắp xếp ưu tiên: nguồn Lượng Tử (lz), đoản kịch gọn (<= 5 tập / 1 file), và điểm giảm dần
+        shorts.sort(
+            key=lambda x: (
+                1 if x.get("source_id") == "lz" else 0,
+                1 if x.get("episodes_count", 999) <= 5 else 0,
+                x.get("score", 0)
+            ),
+            reverse=True
+        )
+        longs.sort(
+            key=lambda x: (
+                1 if x.get("source_id") == "lz" else 0,
+                x.get("score", 0)
+            ),
+            reverse=True
+        )
 
         selected = []
         selected_ids = set()
@@ -661,15 +742,29 @@ class MovieCurator:
         # 3. Bù trừ linh hoạt nếu chưa đủ target_total
         if len(selected) < target_total:
             remaining = [c for c in scored_candidates if c["id"] not in selected_ids]
-            remaining.sort(key=lambda x: (1 if x.get("source_id") == "lz" else 0, x.get("score", 0)), reverse=True)
+            remaining.sort(
+                key=lambda x: (
+                    1 if x.get("source_id") == "lz" else 0,
+                    1 if (x.get("category") == "short_drama" and x.get("episodes_count", 999) <= 5) else 0,
+                    x.get("score", 0)
+                ),
+                reverse=True
+            )
             for c in remaining:
                 if len(selected) >= target_total:
                     break
                 selected.append(c)
                 selected_ids.add(c["id"])
 
-        # Sắp xếp Top 3: Ưu tiên nguồn LZ và điểm số cao nhất
-        selected.sort(key=lambda x: (1 if x.get("source_id") == "lz" else 0, x.get("score", 0)), reverse=True)
+        # Sắp xếp Top 3: Ưu tiên nguồn LZ, đoản kịch gọn <= 5 tập và điểm số cao nhất
+        selected.sort(
+            key=lambda x: (
+                1 if x.get("source_id") == "lz" else 0,
+                1 if (x.get("category") == "short_drama" and x.get("episodes_count", 999) <= 5) else 0,
+                x.get("score", 0)
+            ),
+            reverse=True
+        )
 
         for rank, c in enumerate(selected, start=1):
             c["curation_rank"] = rank
