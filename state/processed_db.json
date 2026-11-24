@@ -1,7 +1,6 @@
 {
   "processed_ids": [
     "lz_167423",
-    "lz_164941",
     "被认回时真千金已考出小山村_20261123_011516"
   ],
   "failed_ids": {
@@ -36,17 +35,7 @@
       "failed_at": "2026-11-23T22:26:51.685224"
     }
   },
-  "pending_review": {
-    "lz_164941": {
-      "title": "Song Thù Cung Lan Mộng",
-      "raw_title": "双姝宫阑梦",
-      "package_path": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/双姝宫阑梦_20261123_120807",
-      "qa_passed": true,
-      "coverage_percent": 86.5,
-      "schedule_slot": "2026-11-23T11:30:00+07:00",
-      "created_at": "2026-11-23T12:21:33.913891"
-    }
-  },
+  "pending_review": {},
   "completed": {
     "被认回时真千金已考出小山村_20261123_011516": {
       "title": "Review Trọn Bộ Tiểu Thư Thật Đã Rời Núi | Full Từ Đầu Đến Kết",

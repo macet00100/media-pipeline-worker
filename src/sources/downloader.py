@@ -216,8 +216,33 @@ class Downloader:
         return ok
 
     @classmethod
+    def reload_tor_circuit(cls) -> bool:
+        """
+        Tự động đổi mạch Tor mới (new circuit) khi gặp 403 Forbidden hoặc timeout CDN.
+        Gửi tín hiệu SIGHUP tới daemon Tor trên Linux/GitHub Actions runner.
+        """
+        proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+        if not proxy:
+            return False
+        if os.name != "nt":
+            print("[Downloader] 🔄 Phát hiện lỗi CDN/403/Timeout -> Gửi tín hiệu reload mạch Tor (pkill -HUP tor)...")
+            try:
+                subprocess.run(["pkill", "-HUP", "tor"], capture_output=True, timeout=5)
+                time.sleep(2)
+                print("[Downloader] ✅ Đã gửi lệnh reload mạch Tor thành công.")
+                return True
+            except Exception:
+                try:
+                    subprocess.run(["sudo", "systemctl", "reload", "tor"], capture_output=True, timeout=5)
+                    time.sleep(2)
+                    return True
+                except Exception:
+                    pass
+        return False
+
+    @classmethod
     def download_segment_to_mp4(cls, stream_url: str, output_path: str, max_seconds: int = 7200) -> bool:
-        """Tải một luồng stream m3u8 thành file mp4 bằng FFmpeg (-c copy)."""
+        """Tải một luồng stream m3u8 thành file mp4 bằng FFmpeg (-c copy) với cơ chế tự đổi mạch Tor và retry."""
         t0 = time.time()
         
         # Luôn cung cấp User-Agent trình duyệt thật để tránh bị CDN chặn
@@ -261,19 +286,31 @@ class Downloader:
             output_path
         ])
 
-        try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000000:
-                elapsed = round(time.time() - t0, 1)
-                size_mb = round(os.path.getsize(output_path) / (1024 * 1024), 1)
-                print(f"[Downloader] Tải thành công ({size_mb} MB trong {elapsed}s)")
-                return True
-            else:
-                print(f"[Downloader] FFmpeg tải thất bại: {res.stderr[-250:]}")
-                return False
-        except Exception as e:
-            print(f"[Downloader] Ngoại lệ khi tải m3u8: {e}")
-            return False
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000000:
+                    elapsed = round(time.time() - t0, 1)
+                    size_mb = round(os.path.getsize(output_path) / (1024 * 1024), 1)
+                    print(f"[Downloader] Tải thành công ({size_mb} MB trong {elapsed}s, lần thử {attempt})")
+                    return True
+                else:
+                    err_msg = res.stderr[-300:] if res.stderr else "Unknown error"
+                    print(f"[Downloader] FFmpeg tải thất bại (lần {attempt}/{max_attempts}): {err_msg}")
+                    if "403" in err_msg or "Forbidden" in err_msg or "Connection timed out" in err_msg or "Server returned 4" in err_msg:
+                        cls.reload_tor_circuit()
+            except subprocess.TimeoutExpired:
+                print(f"[Downloader] FFmpeg timeout 300s (lần {attempt}/{max_attempts})")
+                cls.reload_tor_circuit()
+            except Exception as e:
+                print(f"[Downloader] Ngoại lệ khi tải m3u8 (lần {attempt}/{max_attempts}): {e}")
+                cls.reload_tor_circuit()
+
+            if attempt < max_attempts:
+                time.sleep(2)
+
+        return False
 
     @classmethod
     def download_drama(cls, drama: Dict[str, Any], output_path: str, max_duration_sec: int = 5400) -> bool:

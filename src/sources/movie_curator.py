@@ -368,6 +368,16 @@ class MovieCurator:
                 })
                 continue
 
+            # 5b. Khóa trần thời lượng phim bộ dài (loại bỏ phim truyền hình nhiều tập dài > 20 tập / > 3 tiếng)
+            # Đối với long_series (phim truyền hình dài tập thông thường 45p/tập): tối đa 20 tập để không vượt quá timeout 240p của GitHub Actions.
+            if category == "long_series" and episodes_count > 20:
+                stats["rejected_details"].append({
+                    "title": vod_name,
+                    "category": category,
+                    "reason": f"long_series_runtime_exceeded ({episodes_count} eps > 20 eps max for single runner job)"
+                })
+                continue
+
             # 6. Gộp trùng (Deduplication) giữa LZ và FF
             candidate_record = {
                 "id": movie_id,
@@ -397,8 +407,13 @@ class MovieCurator:
                 existing = dedup_map[norm_title]
                 if src_id not in existing["sources_available"]:
                     existing["sources_available"].append(src_id)
-                # Giữ nguồn có số tập lớn hơn hoặc đầy đủ hơn
-                if episodes_count > existing["episodes_count"]:
+                # Ưu tiên nguồn Lượng Tử (LZ) tuyệt đối để tránh 403 CDN từ Phi Phàm (FF) trên GitHub Runner
+                if src_id == "lz" and existing["source_id"] != "lz":
+                    candidate_record["sources_available"] = existing["sources_available"]
+                    dedup_map[norm_title] = candidate_record
+                elif existing["source_id"] == "lz":
+                    pass  # Giữ nguyên LZ
+                elif episodes_count > existing["episodes_count"]:
                     candidate_record["sources_available"] = existing["sources_available"]
                     dedup_map[norm_title] = candidate_record
             else:
@@ -625,9 +640,9 @@ class MovieCurator:
         shorts = [c for c in scored_candidates if c["category"] == "short_drama"]
         longs = [c for c in scored_candidates if c["category"] == "long_series"]
 
-        # Sắp xếp điểm giảm dần
-        shorts.sort(key=lambda x: x["score"], reverse=True)
-        longs.sort(key=lambda x: x["score"], reverse=True)
+        # Sắp xếp ưu tiên nguồn Lượng Tử (lz) và điểm giảm dần để tránh CDN 403 từ Phi Phàm (ff)
+        shorts.sort(key=lambda x: (1 if x.get("source_id") == "lz" else 0, x.get("score", 0)), reverse=True)
+        longs.sort(key=lambda x: (1 if x.get("source_id") == "lz" else 0, x.get("score", 0)), reverse=True)
 
         selected = []
         selected_ids = set()
@@ -646,15 +661,15 @@ class MovieCurator:
         # 3. Bù trừ linh hoạt nếu chưa đủ target_total
         if len(selected) < target_total:
             remaining = [c for c in scored_candidates if c["id"] not in selected_ids]
-            remaining.sort(key=lambda x: x["score"], reverse=True)
+            remaining.sort(key=lambda x: (1 if x.get("source_id") == "lz" else 0, x.get("score", 0)), reverse=True)
             for c in remaining:
                 if len(selected) >= target_total:
                     break
                 selected.append(c)
                 selected_ids.add(c["id"])
 
-        # Sắp xếp Top 3 theo thứ tự điểm số giảm dần
-        selected.sort(key=lambda x: x["score"], reverse=True)
+        # Sắp xếp Top 3: Ưu tiên nguồn LZ và điểm số cao nhất
+        selected.sort(key=lambda x: (1 if x.get("source_id") == "lz" else 0, x.get("score", 0)), reverse=True)
 
         for rank, c in enumerate(selected, start=1):
             c["curation_rank"] = rank

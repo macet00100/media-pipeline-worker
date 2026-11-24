@@ -25,20 +25,15 @@ class Publisher:
     """
 
     @classmethod
-    def is_auto_publish_enabled(cls) -> bool:
-        """Kiểm tra cờ AUTO_PUBLISH từ Settings hoặc os.environ."""
-        val = os.getenv("AUTO_PUBLISH", "false")
-        if val.strip().lower() in ("true", "1", "yes"):
-            return True
-        return bool(getattr(Settings, "AUTO_PUBLISH", False))
-
-    @classmethod
     def is_youtube_auto_publish_enabled(cls) -> bool:
         """Kiểm tra cờ AUTO_PUBLISH_YOUTUBE (fallback về AUTO_PUBLISH nếu chưa đặt)."""
         val = os.getenv("AUTO_PUBLISH_YOUTUBE")
         if val is not None and val.strip():
             return val.strip().lower() in ("true", "1", "yes")
-        return cls.is_auto_publish_enabled()
+        if hasattr(Settings, "AUTO_PUBLISH_YOUTUBE"):
+            return bool(Settings.AUTO_PUBLISH_YOUTUBE)
+        gen = os.getenv("AUTO_PUBLISH", "false").strip().lower() in ("true", "1", "yes")
+        return gen or bool(getattr(Settings, "AUTO_PUBLISH", False))
 
     @classmethod
     def is_facebook_auto_publish_enabled(cls) -> bool:
@@ -46,7 +41,18 @@ class Publisher:
         val = os.getenv("AUTO_PUBLISH_FACEBOOK")
         if val is not None and val.strip():
             return val.strip().lower() in ("true", "1", "yes")
-        return cls.is_auto_publish_enabled()
+        if hasattr(Settings, "AUTO_PUBLISH_FACEBOOK"):
+            return bool(Settings.AUTO_PUBLISH_FACEBOOK)
+        gen = os.getenv("AUTO_PUBLISH", "false").strip().lower() in ("true", "1", "yes")
+        return gen or bool(getattr(Settings, "AUTO_PUBLISH", False))
+
+    @classmethod
+    def is_auto_publish_enabled(cls) -> bool:
+        """Kiểm tra nếu bất kỳ nền tảng nào (hoặc công tắc chung) được bật auto publish."""
+        yt = cls.is_youtube_auto_publish_enabled()
+        fb = cls.is_facebook_auto_publish_enabled()
+        gen = os.getenv("AUTO_PUBLISH", "false").strip().lower() in ("true", "1", "yes") or bool(getattr(Settings, "AUTO_PUBLISH", False))
+        return yt or fb or gen
 
     @classmethod
     def send_telegram_alert(cls, message: str) -> None:

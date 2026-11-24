@@ -219,10 +219,16 @@ class PublisherStub:
     ) -> Dict[str, Any]:
         """
         Giao diện publish_video:
-        - Khi Settings.AUTO_PUBLISH == True: Ủy quyền cho Publisher thực thi upload thật.
-        - Khi Settings.AUTO_PUBLISH == False: Lập kế hoạch giờ vàng và ghi vào schedule_plan.json.
+        - Khi Settings.is_auto_publish_enabled() == True: Ủy quyền cho Publisher thực thi upload thật.
+        - Khi Settings.is_auto_publish_enabled() == False: Lập kế hoạch giờ vàng và ghi vào schedule_plan.json.
         """
-        if getattr(Settings, "AUTO_PUBLISH", False):
+        effective_publish = (
+            getattr(Settings, "is_auto_publish_enabled", lambda: False)()
+            or getattr(Settings, "AUTO_PUBLISH", False)
+            or getattr(Settings, "AUTO_PUBLISH_YOUTUBE", False)
+            or getattr(Settings, "AUTO_PUBLISH_FACEBOOK", False)
+        )
+        if effective_publish:
             from src.delivery.publisher import Publisher
             return Publisher.publish_video(
                 video_path=video_path,

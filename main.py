@@ -643,7 +643,7 @@ def main():
 
     print("=" * 70)
     print(f"🚀 COOL MÈO PHIM AUTOMATION (3 VIDEO/NGÀY VÀO GIỜ VÀNG)")
-    print(f"🔒 Khóa an toàn Auto-Publish: {'BẬT' if Settings.AUTO_PUBLISH else 'KHÓA CỨNG (Chỉ xuất Gói Xét Duyệt)'}")
+    print(f"🔒 Khóa an toàn Auto-Publish: {'BẬT' if Settings.is_auto_publish_enabled() else 'KHÓA CỨNG (Chỉ xuất Gói Xét Duyệt)'} (YT: {Settings.AUTO_PUBLISH_YOUTUBE}, FB: {Settings.AUTO_PUBLISH_FACEBOOK})")
     print("=" * 70)
 
     verify_assets_ready()

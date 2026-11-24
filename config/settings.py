@@ -52,6 +52,11 @@ class Settings:
         else AUTO_PUBLISH
     )
 
+    @classmethod
+    def is_auto_publish_enabled(cls) -> bool:
+        """Kiểm tra nếu bất kỳ nền tảng nào (hoặc công tắc chung) được bật auto publish."""
+        return bool(cls.AUTO_PUBLISH or cls.AUTO_PUBLISH_YOUTUBE or cls.AUTO_PUBLISH_FACEBOOK)
+
     # Golden Hours & Video Scheduling (GMT+7)
     GOLDEN_HOURS_VN: str = os.getenv("GOLDEN_HOURS_VN", "11:30,17:30,20:30")
     PRE_UPLOAD_BUFFER_HOURS: int = int(os.getenv("PRE_UPLOAD_BUFFER_HOURS", "6"))
