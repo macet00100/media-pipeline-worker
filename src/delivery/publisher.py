@@ -423,6 +423,24 @@ class Publisher:
         }
 
     @classmethod
+    def get_video_dimensions(cls, video_path: str) -> Tuple[int, int]:
+        """Lấy chiều rộng và chiều cao của video bằng ffprobe (fallback 720x1280)."""
+        import subprocess
+        try:
+            probe_cmd = [
+                "ffprobe", "-v", "error", "-select_streams", "v:0",
+                "-show_entries", "stream=width,height", "-of", "json", str(video_path)
+            ]
+            r_pr = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=10)
+            d_pr = json.loads(r_pr.stdout)
+            for st in d_pr.get("streams", []):
+                if "width" in st and "height" in st:
+                    return int(st["width"]), int(st["height"])
+        except Exception:
+            pass
+        return 720, 1280
+
+    @classmethod
     def upload_to_facebook(
         cls,
         video_path: str,
@@ -554,12 +572,75 @@ class Publisher:
         final_video_id = finish_data.get("video_id") or finish_data.get("id") or video_id
         print(f"[Facebook Upload] ✅ Upload thành công! Video ID: {final_video_id}")
 
+        # Tự động nhận diện hướng video (Dọc 9:16 hay Ngang 16:9) để gắn đúng tỷ lệ thumbnail Facebook
+        v_w, v_h = cls.get_video_dimensions(str(v_path))
+        is_vertical = v_h > v_w
+        pkg_dir = Path(thumbnail_path).parent if thumbnail_path else v_path.parent
+
+        chosen_thumb_path: Optional[Path] = None
+        if is_vertical:
+            # Video DỌC (Reels): BẮT BUỘC dùng thumbnail dọc (9:16, e.g. 720x1280). TUYỆT ĐỐI KHÔNG dùng thumbnail_horizontal.jpg!
+            vert_candidates = [
+                pkg_dir / "thumbnail.jpg",
+                pkg_dir / "thumbnail_vertical.jpg",
+                pkg_dir / "thumbnail_song_thu_vertical.jpg",
+                pkg_dir / "thumbnail_tieu_thu_vertical.jpg"
+            ]
+            if thumbnail_path and Path(thumbnail_path).exists():
+                tp = Path(thumbnail_path)
+                if "horizontal" not in tp.name.lower():
+                    try:
+                        with Image.open(tp) as im:
+                            if im.height >= im.width:
+                                chosen_thumb_path = tp
+                    except Exception:
+                        chosen_thumb_path = tp
+            if not chosen_thumb_path:
+                for c in vert_candidates:
+                    if c.exists():
+                        chosen_thumb_path = c
+                        break
+        else:
+            # Video NGANG (16:9): Dùng thumbnail ngang (16:9, e.g. 1280x720)
+            horiz_candidates = [
+                pkg_dir / "thumbnail_horizontal.jpg",
+                pkg_dir / "thumbnail_song_thu_horizontal.jpg",
+                pkg_dir / "thumbnail_tieu_thu_horizontal.jpg",
+                pkg_dir / "thumbnail.jpg"
+            ]
+            if thumbnail_path and Path(thumbnail_path).exists():
+                tp = Path(thumbnail_path)
+                if "vertical" not in tp.name.lower():
+                    try:
+                        with Image.open(tp) as im:
+                            if im.width >= im.height:
+                                chosen_thumb_path = tp
+                    except Exception:
+                        chosen_thumb_path = tp
+            if not chosen_thumb_path:
+                for c in horiz_candidates:
+                    if c.exists():
+                        chosen_thumb_path = c
+                        break
+
         # Upload custom thumbnail
         thumb_uploaded = False
-        if thumbnail_path and Path(thumbnail_path).exists():
+        thumb_dims = ""
+        if chosen_thumb_path and chosen_thumb_path.exists():
+            t_w, t_h = 0, 0
+            try:
+                with Image.open(chosen_thumb_path) as im:
+                    t_w, t_h = im.size
+                thumb_dims = f"{t_w}x{t_h}"
+            except Exception:
+                thumb_dims = "unknown"
+
+            orientation_label = "DỌC 9:16" if is_vertical else "NGANG 16:9"
+            print(f"[Facebook Upload] 🖼️ Gắn custom thumbnail Facebook: {chosen_thumb_path.name} ({thumb_dims}), Video: {v_w}x{v_h} ({orientation_label})")
+
             try:
                 thumb_url = f"https://graph-video.facebook.com/v20.0/{final_video_id}/thumbnails"
-                with open(thumbnail_path, "rb") as tf:
+                with open(chosen_thumb_path, "rb") as tf:
                     t_res = requests.post(
                         thumb_url,
                         data={"access_token": token, "is_preferred": "true"},
@@ -569,7 +650,7 @@ class Publisher:
                     t_json = t_res.json()
                     if "error" not in t_json and (t_json.get("success") or "id" in t_json):
                         thumb_uploaded = True
-                        print(f"[Facebook Upload] ✅ Đã cập nhật custom thumbnail thành công cho video {final_video_id}")
+                        print(f"[Facebook Upload] ✅ Đã cập nhật custom thumbnail thành công cho video {final_video_id} ({chosen_thumb_path.name} - {thumb_dims})")
                     else:
                         print(f"[Facebook Upload] ⚠️ Không thể đặt custom thumbnail Facebook: {t_json}")
             except Exception as te:
@@ -582,6 +663,9 @@ class Publisher:
             "video_url": f"https://www.facebook.com/watch/?v={final_video_id}",
             "scheduled_publish_time": scheduled_publish_timestamp,
             "thumbnail_uploaded": thumb_uploaded,
+            "thumbnail_path": str(chosen_thumb_path) if chosen_thumb_path else None,
+            "thumbnail_dimensions": thumb_dims,
+            "is_vertical": is_vertical,
             "title": clean_title
         }
 
@@ -681,18 +765,35 @@ class Publisher:
         if not video_file:
             raise FileNotFoundError(f"Không tìm thấy file video hoàn chỉnh trong {pkg_dir}")
 
-        # Tìm thumbnail (ưu tiên bản ngang 16:9 cho YouTube/Facebook video)
-        thumb_candidates = [
+        v_w, v_h = cls.get_video_dimensions(str(video_file))
+        is_vertical = v_h > v_w
+
+        # Tìm thumbnail phù hợp theo từng nền tảng:
+        # YouTube: Luôn ưu tiên thumbnail ngang 16:9 cho chuẩn videos.insert
+        thumb_yt_candidates = [
             pkg_dir / "thumbnail_horizontal.jpg",
-            pkg_dir / "thumbnail.jpg",
             pkg_dir / "thumbnail_song_thu_horizontal.jpg",
-            pkg_dir / "thumbnail_tieu_thu_horizontal.jpg"
+            pkg_dir / "thumbnail_tieu_thu_horizontal.jpg",
+            pkg_dir / "thumbnail.jpg"
         ]
-        thumb_file = None
-        for cand in thumb_candidates:
-            if cand.exists():
-                thumb_file = cand
-                break
+        thumb_file_yt = next((c for c in thumb_yt_candidates if c.exists()), None)
+
+        # Facebook: Video DỌC (Reels) BẮT BUỘC dùng thumbnail DỌC (9:16, e.g. 720x1280). Video NGANG dùng ngang 16:9.
+        if is_vertical:
+            thumb_fb_candidates = [
+                pkg_dir / "thumbnail.jpg",
+                pkg_dir / "thumbnail_vertical.jpg",
+                pkg_dir / "thumbnail_song_thu_vertical.jpg",
+                pkg_dir / "thumbnail_tieu_thu_vertical.jpg"
+            ]
+        else:
+            thumb_fb_candidates = [
+                pkg_dir / "thumbnail_horizontal.jpg",
+                pkg_dir / "thumbnail_song_thu_horizontal.jpg",
+                pkg_dir / "thumbnail_tieu_thu_horizontal.jpg",
+                pkg_dir / "thumbnail.jpg"
+            ]
+        thumb_file_fb = next((c for c in thumb_fb_candidates if c.exists()), None)
 
         # Đọc SEO metadata
         seo_file = pkg_dir / "seo_metadata.json"
@@ -745,7 +846,7 @@ class Publisher:
                 title=title,
                 description=description,
                 package_dir=str(pkg_dir),
-                thumbnail_path=str(thumb_file) if thumb_file else None,
+                thumbnail_path=str(thumb_file_yt) if thumb_file_yt else None,
                 tags=tags,
                 video_id=movie_id,
                 custom_scheduler=custom_scheduler
@@ -780,7 +881,7 @@ class Publisher:
             except Exception:
                 pass
 
-        # A. UPLOAD YOUTUBE
+        # A. UPLOAD YOUTUBE (Chạy trước + Ngâm 6 phút kiểm duyệt Content ID)
         if auto_yt:
             if existing_result.get("youtube", {}).get("success"):
                 print(f"[YouTube Upload] ✅ Video đã được upload trước đó (ID: {existing_result['youtube'].get('video_id')}). Bỏ qua upload trùng lặp.")
@@ -792,7 +893,7 @@ class Publisher:
                         title=title,
                         description=description,
                         publish_at_utc=publish_at_utc,
-                        thumbnail_path=str(thumb_file) if thumb_file else None,
+                        thumbnail_path=str(thumb_file_yt) if thumb_file_yt else None,
                         tags=tags
                     )
                 except Exception as yt_err:
@@ -806,6 +907,7 @@ class Publisher:
                 # NẾU BỊ CHẶN BẢN QUYỀN: HỦY BỎ VÀ ĐÁNH DẤU COPYRIGHT_BLOCKED
                 if yt_result.get("copyright_blocked"):
                     print(f"[Publisher] ⚠️ Video [{title}] bị chặn bản quyền YouTube. Đã tự động xóa video khỏi kênh.")
+                    print(f"[Facebook Upload] 🛡️ KHÓA LIÊN HOÀN BẢO VỆ FANPAGE: YouTube bị chặn bản quyền Content ID -> TỰ ĐỘNG HỦY, KHÔNG ĐẨY VIDEO LÊN FACEBOOK (skipped_due_to_yt_copyright_block)!")
                     StateManager.mark_failed(movie_id, yt_result.get("reason", "copyright_blocked"), title)
                     result_payload = {
                         "movie_id": movie_id,
@@ -815,7 +917,12 @@ class Publisher:
                         "copyright_blocked": True,
                         "overall_success": False,
                         "youtube": yt_result,
-                        "facebook": {"success": False, "skipped": True}
+                        "facebook": {
+                            "success": False,
+                            "skipped": True,
+                            "reason": "skipped_due_to_yt_copyright_block",
+                            "platform": "facebook"
+                        }
                     }
                     with open(publish_res_file, "w", encoding="utf-8") as f:
                         json.dump(result_payload, f, ensure_ascii=False, indent=2)
@@ -824,9 +931,17 @@ class Publisher:
             print("[YouTube Upload] AUTO_PUBLISH_YOUTUBE=false: Bỏ qua upload YouTube.")
             yt_result = {"success": False, "skipped": True, "platform": "youtube"}
 
-        # B. UPLOAD FACEBOOK
+        # B. UPLOAD FACEBOOK (Chỉ chạy khi YouTube an toàn sạch sẽ hoặc khi tắt YouTube)
         if auto_fb:
-            if existing_result.get("facebook", {}).get("success"):
+            if auto_yt and yt_result.get("copyright_blocked"):
+                print(f"[Facebook Upload] 🛡️ Bỏ qua Facebook do YouTube bị chặn bản quyền (skipped_due_to_yt_copyright_block): {title}")
+                fb_result = {
+                    "success": False,
+                    "skipped": True,
+                    "reason": "skipped_due_to_yt_copyright_block",
+                    "platform": "facebook"
+                }
+            elif existing_result.get("facebook", {}).get("success"):
                 print(f"[Facebook Upload] ✅ Video đã được upload lên Facebook trước đó (ID: {existing_result['facebook'].get('video_id')}). Bỏ qua upload trùng lặp.")
                 fb_result = existing_result["facebook"]
             else:
@@ -836,7 +951,7 @@ class Publisher:
                         title=title,
                         description=description,
                         scheduled_publish_timestamp=scheduled_timestamp,
-                        thumbnail_path=str(thumb_file) if thumb_file else None
+                        thumbnail_path=str(thumb_file_fb) if thumb_file_fb else None
                     )
                 except Exception as fb_err:
                     print(f"[Publisher] ❌ Lỗi upload Facebook: {fb_err}")

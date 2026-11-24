@@ -1,6 +1,87 @@
 {
   "queue": [
     {
+      "id": "lz_167732",
+      "vod_id": "167732",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "一剑星河渡",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 94,
+      "curation_details": {
+        "hook_score": 31,
+        "viral_score": 29,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 94,
+        "reasoning": "Đoản kịch thịnh hành, link direct m3u8 xác thực sống 100% trọn bộ 1 file Full HD."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261123-1/818ddcf3bc1374266d6b99187440124a.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261121/15480_5bc2b75a/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-24T11:55:00"
+    },
+    {
+      "id": "lz_167731",
+      "vod_id": "167731",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "和闺蜜的聊天记录公开了",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 93,
+      "curation_details": {
+        "hook_score": 31,
+        "viral_score": 29,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 93,
+        "reasoning": "Đoản kịch thịnh hành, link direct m3u8 xác thực sống 100% trọn bộ 1 file Full HD."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261123-1/ed83b97a1af9873d57c2add06c3bd471.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261121/15479_b031edf2/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-24T11:55:00"
+    },
+    {
+      "id": "lz_167730",
+      "vod_id": "167730",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "辞职当天被拦下，我甩出工资条她傻眼了",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 92,
+      "curation_details": {
+        "hook_score": 31,
+        "viral_score": 29,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 92,
+        "reasoning": "Đoản kịch thịnh hành, link direct m3u8 xác thực sống 100% trọn bộ 1 file Full HD."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261123-1/28de21b15ee0fb961ad9f29ff76c9391.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261121/15478_cd5ef326/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-24T11:55:00"
+    },
+    {
       "id": "lz_164941",
       "vod_id": "164941",
       "source_id": "lz",
