@@ -837,8 +837,104 @@
       ],
       "status": "failed",
       "queued_at": "2026-11-24T21:08:39.918246"
+    },
+    {
+      "id": "lz_168021",
+      "vod_id": "168021",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "重生八零：致富宠妻上大学",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 82,
+      "curation_details": {
+        "hook_score": 25,
+        "viral_score": 20,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 82,
+        "reasoning": "Phim có đề tài viral [重生], yếu tố hook kịch tính [重生], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/b3608db3ae6ddca39c83b66153d7787f.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15575_30e7c704/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-25T04:11:33.668618"
+    },
+    {
+      "id": "lz_168017",
+      "vod_id": "168017",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "重生后我靠医术救王爷",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 82,
+      "curation_details": {
+        "hook_score": 25,
+        "viral_score": 20,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 82,
+        "reasoning": "Phim có đề tài viral [重生], yếu tố hook kịch tính [重生], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/859d9a54aa9abd507f7317813ce2cc95.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15569_13b45645/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-25T04:11:33.668618"
+    },
+    {
+      "id": "lz_166172",
+      "vod_id": "166172",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "山河对弈帝王棋",
+      "category": "long_series",
+      "episodes_count": 16,
+      "total_episodes": 16,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 76,
+      "curation_details": {
+        "hook_score": 25,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 15,
+        "total_score": 76,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [真相], độ trọn vẹn 16 tập (Đã Full), nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261112-1/e587011f3e788e0bbc35db85817be726.webp",
+      "m3u8_groups": [
+        "https://v.lfthirtytwo.com/20261112/11817_5b49a24a/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11816_4e74f953/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11815_34c0aa85/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11814_835ddb8f/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11813_6650dc23/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11812_09e04daf/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11811_85ebb39a/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11810_838480ec/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11809_bc4d15ae/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11808_abf5f9a2/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11807_100527cf/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11806_041f6437/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11805_6354e469/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11804_9a0b4df2/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11803_c0da4f92/index.m3u8",
+        "https://v.lfthirtytwo.com/20261112/11802_9d81a981/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-25T04:11:33.668618"
     }
   ],
-  "total_items": 15,
-  "last_updated": "2026-11-24T22:19:33.268006"
+  "total_items": 18,
+  "last_updated": "2026-11-25T04:28:20.748368"
 }
