@@ -52,6 +52,21 @@
       "buffer_hours": 6,
       "status": "scheduled",
       "metadata": {}
+    },
+    "2026-11-26 11:30": {
+      "slot_key": "2026-11-26 11:30",
+      "slot_vn": "2026-11-26T11:30:00+07:00",
+      "publish_at_utc": "2026-11-26T04:30:00Z",
+      "scheduled_publish_timestamp": 1795667400,
+      "golden_hour": "11:30",
+      "date": "2026-11-26",
+      "video_id": "lz_168038",
+      "title": "Review Trọn Bộ Người Yêu Cũ Thủ Tiết Mười Tám Năm | Full Từ Đầu Đến Kết",
+      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/前任为我苦守18年_20261125_084452",
+      "allocated_at": "2026-11-25T16:42:08.173516+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
     }
   },
   "scheduled_videos": [
@@ -99,7 +114,22 @@
       "buffer_hours": 6,
       "status": "scheduled",
       "metadata": {}
+    },
+    {
+      "slot_key": "2026-11-26 11:30",
+      "slot_vn": "2026-11-26T11:30:00+07:00",
+      "publish_at_utc": "2026-11-26T04:30:00Z",
+      "scheduled_publish_timestamp": 1795667400,
+      "golden_hour": "11:30",
+      "date": "2026-11-26",
+      "video_id": "lz_168038",
+      "title": "Review Trọn Bộ Người Yêu Cũ Thủ Tiết Mười Tám Năm | Full Từ Đầu Đến Kết",
+      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/前任为我苦守18年_20261125_084452",
+      "allocated_at": "2026-11-25T16:42:08.173516+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
     }
   ],
-  "last_updated": "2026-11-24T00:49:57.988973+07:00"
+  "last_updated": "2026-11-25T16:42:08.173730+07:00"
 }
