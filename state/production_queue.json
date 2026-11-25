@@ -933,8 +933,89 @@
       ],
       "status": "failed",
       "queued_at": "2026-11-25T04:11:33.668618"
+    },
+    {
+      "id": "lz_168034",
+      "vod_id": "168034",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "前妻官宣后我重回巅峰",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 79,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 20,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 79,
+        "reasoning": "Phim có đề tài viral [重回], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/13de268cdbc8695b04e999814afedc78.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15585_2f65d52d/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-25T07:11:49.617470"
+    },
+    {
+      "id": "lz_168028",
+      "vod_id": "168028",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "今日宜离婚",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 79,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 20,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 79,
+        "reasoning": "Phim có đề tài viral [离婚], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/3183bf1ca8df8ddcbf6094b45e9c9e45.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15581_6453c288/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-25T07:11:49.617470"
+    },
+    {
+      "id": "lz_168018",
+      "vod_id": "168018",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "闪婚老公大十岁",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 79,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 20,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 79,
+        "reasoning": "Phim có đề tài viral [闪婚], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/f21ccff713077be1decbf98fe069c04b.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15570_e580cd81/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-25T07:11:49.617470"
     }
   ],
-  "total_items": 18,
-  "last_updated": "2026-11-25T04:28:20.748368"
+  "total_items": 21,
+  "last_updated": "2026-11-25T07:24:27.222563"
 }
