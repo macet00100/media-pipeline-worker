@@ -1,7 +1,9 @@
 {
   "processed_ids": [
     "lz_167423",
-    "被认回时真千金已考出小山村_20261123_011516"
+    "被认回时真千金已考出小山村_20261123_011516",
+    "前任为我苦守18年_20261125_102916",
+    "lz_168038"
   ],
   "failed_ids": {
     "lz_162781": {
@@ -110,7 +112,17 @@
       "failed_at": "2026-11-25T07:24:27.221418"
     }
   },
-  "pending_review": {},
+  "pending_review": {
+    "lz_168038": {
+      "title": "Người Tình Đợi Chờ Mười Tám Năm",
+      "raw_title": "前任为我苦守18年",
+      "package_path": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/前任为我苦守18年_20261125_102916",
+      "qa_passed": true,
+      "coverage_percent": 88.9,
+      "schedule_slot": "2026-11-26T11:30:00+07:00",
+      "created_at": "2026-11-25T11:36:34.679691"
+    }
+  },
   "completed": {
     "被认回时真千金已考出小山村_20261123_011516": {
       "title": "Review Trọn Bộ Tiểu Thư Thật Đã Rời Núi | Full Từ Đầu Đến Kết",
@@ -136,7 +148,36 @@
         "title": "Review Trọn Bộ Tiểu Thư Thật Đã Rời Núi | Full Từ Đầu Đến Kết"
       },
       "completed_at": "2026-11-24T00:56:31.269784"
+    },
+    "前任为我苦守18年_20261125_102916": {
+      "title": "Review Trọn Bộ Người Tình Đợi Chờ Mười Tám Năm | Full Từ Đầu Đến Kết",
+      "package_path": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/前任为我苦守18年_20261125_102916",
+      "schedule_slot": "2026-11-26T17:30:00+07:00",
+      "golden_hour": "17:30",
+      "youtube": {
+        "success": true,
+        "copyright_blocked": false,
+        "platform": "youtube",
+        "video_id": "Jelj8KlAhA0",
+        "video_url": "https://www.youtube.com/watch?v=Jelj8KlAhA0",
+        "publish_at_utc": "2026-11-26T10:30:00Z",
+        "thumbnail_uploaded": true,
+        "title": "Review Trọn Bộ Người Tình Đợi Chờ Mười Tám Năm | Full Từ Đầu Đến Kết"
+      },
+      "facebook": {
+        "success": true,
+        "platform": "facebook",
+        "video_id": "2604477620029595",
+        "video_url": "https://www.facebook.com/watch/?v=2604477620029595",
+        "scheduled_publish_time": 1795689000,
+        "thumbnail_uploaded": true,
+        "thumbnail_path": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/前任为我苦守18年_20261125_102916/thumbnail.jpg",
+        "thumbnail_dimensions": "720x1280",
+        "is_vertical": true,
+        "title": "Review Trọn Bộ Người Tình Đợi Chờ Mười Tám Năm | Full Từ Đầu Đến Kết"
+      },
+      "completed_at": "2026-11-25T11:36:34.679007"
     }
   },
-  "last_updated": "2026-11-25T17:26:29.510744"
+  "last_updated": "2026-11-25T11:36:34.679705"
 }

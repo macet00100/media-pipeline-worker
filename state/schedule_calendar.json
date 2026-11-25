@@ -67,6 +67,21 @@
       "buffer_hours": 6,
       "status": "scheduled",
       "metadata": {}
+    },
+    "2026-11-26 17:30": {
+      "slot_key": "2026-11-26 17:30",
+      "slot_vn": "2026-11-26T17:30:00+07:00",
+      "publish_at_utc": "2026-11-26T10:30:00Z",
+      "scheduled_publish_timestamp": 1795689000,
+      "golden_hour": "17:30",
+      "date": "2026-11-26",
+      "video_id": "前任为我苦守18年_20261125_102916",
+      "title": "Review Trọn Bộ Người Tình Đợi Chờ Mười Tám Năm | Full Từ Đầu Đến Kết",
+      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/前任为我苦守18年_20261125_102916",
+      "allocated_at": "2026-11-25T18:23:01.273359+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
     }
   },
   "scheduled_videos": [
@@ -129,7 +144,22 @@
       "buffer_hours": 6,
       "status": "scheduled",
       "metadata": {}
+    },
+    {
+      "slot_key": "2026-11-26 17:30",
+      "slot_vn": "2026-11-26T17:30:00+07:00",
+      "publish_at_utc": "2026-11-26T10:30:00Z",
+      "scheduled_publish_timestamp": 1795689000,
+      "golden_hour": "17:30",
+      "date": "2026-11-26",
+      "video_id": "前任为我苦守18年_20261125_102916",
+      "title": "Review Trọn Bộ Người Tình Đợi Chờ Mười Tám Năm | Full Từ Đầu Đến Kết",
+      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/前任为我苦守18年_20261125_102916",
+      "allocated_at": "2026-11-25T18:23:01.273359+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
     }
   ],
-  "last_updated": "2026-11-25T16:42:08.173730+07:00"
+  "last_updated": "2026-11-25T18:23:01.273655+07:00"
 }
