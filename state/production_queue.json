@@ -18,7 +18,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "queued",
+      "status": "failed",
       "score": 75,
       "score_breakdown": {
         "hook_score": 22,
@@ -47,7 +47,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "queued",
+      "status": "failed",
       "score": 75,
       "score_breakdown": {
         "hook_score": 22,
@@ -76,7 +76,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "queued",
+      "status": "failed",
       "score": 78,
       "score_breakdown": {
         "hook_score": 25,
@@ -105,7 +105,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "queued",
+      "status": "failed",
       "score": 75,
       "score_breakdown": {
         "hook_score": 22,
@@ -134,7 +134,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "queued",
+      "status": "failed",
       "score": 79,
       "score_breakdown": {
         "hook_score": 22,
@@ -147,5 +147,5 @@
     }
   ],
   "total_items": 5,
-  "last_updated": "2026-11-25T07:57:22.532178"
+  "last_updated": "2026-11-25T08:12:51.719776"
 }
