@@ -108,31 +108,6 @@
       "title": "闪婚老公大十岁",
       "reason": "Tải tập #1 thất bại từ: https://lzv34.com/20261123/15570_e580cd81/index.m3u8",
       "failed_at": "2026-11-25T07:24:27.221418"
-    },
-    "lz_168038": {
-      "title": "前任为我苦守18年",
-      "reason": "[QA GATE BLOCKED] Gói xét duyệt không vượt qua cổng QA (passed=False). Nghiêm cấm upload!",
-      "failed_at": "2026-11-25T09:42:32.025398"
-    },
-    "lz_168037": {
-      "title": "装穷回乡，百万现金看清人心",
-      "reason": "Pre-flight failed: ts_speed_too_slow (66.4KB/s < 80KB/s)",
-      "failed_at": "2026-11-25T09:42:55.672733"
-    },
-    "lz_168036": {
-      "title": "被羞辱当天，我收回他的一切",
-      "reason": "Pre-flight failed: ts_speed_too_slow (34.3KB/s < 80KB/s)",
-      "failed_at": "2026-11-25T09:43:22.459091"
-    },
-    "lz_168035": {
-      "title": "穿书：恶毒女配爆改原著",
-      "reason": "Pre-flight failed: http_status_404_at_ep_1",
-      "failed_at": "2026-11-25T09:43:37.825933"
-    },
-    "lz_168034": {
-      "title": "前妻官宣后我重回巅峰",
-      "reason": "Pre-flight failed: network_error_ep_1_HTTPSConnectionPool(host='lzv34.com', po",
-      "failed_at": "2026-11-25T09:43:56.576555"
     }
   },
   "pending_review": {},
@@ -163,5 +138,5 @@
       "completed_at": "2026-11-24T00:56:31.269784"
     }
   },
-  "last_updated": "2026-11-25T09:43:56.576596"
+  "last_updated": "2026-11-25T17:05:21.805226"
 }

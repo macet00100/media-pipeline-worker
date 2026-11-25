@@ -358,16 +358,41 @@ class SeriesStitcher:
             dur = episode_durations[ep_idx] if ep_idx < len(episode_durations) else 0.0
             cum_offset += dur
 
+        # Sắp xếp và làm sạch mốc thời gian để 0% chồng lấn giữa các chương
+        parsed_dialogues = []
+        for dl in dialogue_lines:
+            p = dl.strip().split(",", 9)
+            if len(p) >= 10:
+                try:
+                    st = parse_ass_time(p[1])
+                    et = parse_ass_time(p[2])
+                    parsed_dialogues.append({"start": st, "end": et, "parts": p})
+                except Exception:
+                    pass
+
+        parsed_dialogues.sort(key=lambda x: x["start"])
+        clean_dlines = []
+        for item in parsed_dialogues:
+            if clean_dlines:
+                prev = clean_dlines[-1]
+                if prev["end"] > item["start"]:
+                    prev["end"] = max(prev["start"] + 0.1, item["start"] - 0.02)
+                    prev["parts"][2] = format_ass_time(prev["end"])
+            if item["end"] > item["start"] + 0.05:
+                clean_dlines.append(item)
+
+        final_dialogue_lines = [",".join(it["parts"]) + "\n" for it in clean_dlines] if clean_dlines else dialogue_lines
+
         Path(output_master_ass).parent.mkdir(parents=True, exist_ok=True)
         with open(output_master_ass, "w", encoding="utf-8") as f:
             for hl in header_lines:
                 f.write(hl if hl.endswith("\n") else hl + "\n")
             if not any("[Events]" in l for l in header_lines):
                 f.write("[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
-            for dl in dialogue_lines:
+            for dl in final_dialogue_lines:
                 f.write(dl)
 
-        print(f"[SeriesStitcher] Đã xuất file phụ đề trọn bộ gộp ({len(dialogue_lines)} dòng): {output_master_ass}")
+        print(f"[SeriesStitcher] Đã xuất file phụ đề trọn bộ gộp ({len(final_dialogue_lines)} dòng): {output_master_ass}")
         return True
         """
         Ghép nối các batch cực nhanh bằng FFmpeg `-c copy` không encode lại.
