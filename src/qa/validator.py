@@ -382,6 +382,106 @@ class QualityValidator:
         }
 
     @classmethod
+    def check_thumbnail_consistency(
+        cls,
+        thumbnail_path: str,
+        seo_data: Dict[str, Any],
+        output_dir: str
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Kiểm tra chất lượng và tính nhất quán thể loại của Thumbnail:
+        1. Tồn tại file và kích thước > 10KB.
+        2. Đọc metadata 3 tầng chữ thumbnail (từ thumbnail_metadata.json hoặc seo_data).
+        3. Tuyệt đối không để trống hoặc chứa placeholder kỹ thuật (vd: 'line1_red_brush', 'chỉ 2–3 từ'...).
+        4. Đối chiếu 3 dòng chữ với thể loại & cốt truyện phim:
+           - Phim hiện đại/đô thị: CẤM chứa từ khóa cổ trang/xuyên không (cung đình, hoàng thượng, vương phi, xuyên không...).
+           - Phim cổ trang: CẤM chứa từ khóa hiện đại (tổng tài, xe hơi, công ty, tập đoàn...).
+        """
+        if not os.path.exists(thumbnail_path) or os.path.getsize(thumbnail_path) <= 10000:
+            return False, {
+                "error": "File thumbnail không tồn tại hoặc kích thước <= 10KB",
+                "path": thumbnail_path,
+                "size_bytes": os.path.getsize(thumbnail_path) if os.path.exists(thumbnail_path) else 0
+            }
+
+        # 1. Đọc metadata từ thumbnail_metadata.json trong output_dir nếu có
+        meta_file = os.path.join(output_dir, "thumbnail_metadata.json")
+        meta = {}
+        if os.path.exists(meta_file):
+            try:
+                with open(meta_file, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+            except Exception:
+                meta = {}
+
+        layers = meta if (meta.get("line1_red_brush") or meta.get("line1")) else (seo_data.get("thumbnail_layers") or {})
+        genre = (meta.get("genre") or seo_data.get("genre") or "").strip().lower()
+
+        l1 = (layers.get("line1_red_brush") or layers.get("line1") or "").strip()
+        l2 = (layers.get("line2_big_yellow") or layers.get("line2") or "").strip()
+        l3 = (layers.get("line3_yellow_block") or layers.get("line3") or "").strip()
+
+        metrics = {
+            "thumbnail_path": thumbnail_path,
+            "size_kb": round(os.path.getsize(thumbnail_path) / 1024, 1),
+            "genre": genre,
+            "line1": l1,
+            "line2": l2,
+            "line3": l3
+        }
+
+        # Nếu không có metadata 3 tầng nào (ví dụ mock test đơn giản)
+        if not l1 and not l2 and not l3:
+            thumb_title = str(seo_data.get("thumbnail_title", "")).lower()
+            if thumb_title:
+                if (genre in ["modern", "hiện đại", "đô thị"] or not genre) and any(w in thumb_title for w in ["cung đình", "xuyên không", "hoàng thượng", "vương phi"]):
+                    metrics["error"] = "Xung đột thể loại: Phim hiện đại nhưng tiêu đề thumbnail chứa từ khóa cổ trang"
+                    return False, metrics
+            metrics["note"] = "Bỏ qua kiểm tra 3 tầng do không có metadata layer, file thumbnail hợp lệ > 10KB"
+            return True, metrics
+
+        # 2. Kiểm tra chuỗi rỗng hoặc placeholder kỹ thuật
+        if not l1 or not l2 or not l3:
+            metrics["error"] = "Thiếu ít nhất 1 trong 3 tầng chữ thumbnail"
+            return False, metrics
+
+        combined_text = f"{l1} {l2} {l3}".lower()
+        placeholders = [
+            "line1", "line2", "line3", "red_brush", "big_yellow", "yellow_block",
+            "2-3 từ", "chỉ 2–3 từ", "placeholder", "tên phim", "bối cảnh", "hành động",
+            "kết quả gây sốc"
+        ]
+        for ph in placeholders:
+            if ph in combined_text:
+                metrics["error"] = f"Chứa placeholder kỹ thuật '{ph}' chưa được xử lý"
+                return False, metrics
+
+        # 3. Đối chiếu xung đột thể loại
+        ancient_forbidden = [
+            "cung đình", "xuyên không", "hoàng thượng", "hoàng đế", "vương phi", "vương gia",
+            "thái tử", "hoàng hậu", "di nương", "trắc phi", "thứ nữ", "lãnh cung", "bệ hạ",
+            "thần thiếp", "hoàng huynh", "nương nương", "thái giám", "triều đình"
+        ]
+        modern_forbidden = [
+            "tổng tài", "xe hơi", "bệnh viện", "công ty", "tập đoàn", "chủ tịch",
+            "hợp đồng", "thực tập", "ly hôn"
+        ]
+
+        if genre in ["modern", "hiện đại", "đô thị", "hào môn", "tổng tài"] or not genre:
+            for kw in ancient_forbidden:
+                if kw in combined_text:
+                    metrics["error"] = f"Xung đột thể loại: Phim hiện đại nhưng thumbnail chứa từ khóa '{kw.upper()}'"
+                    return False, metrics
+
+        elif genre in ["ancient", "cổ trang", "cung đấu"]:
+            for kw in modern_forbidden:
+                if kw in combined_text:
+                    metrics["error"] = f"Xung đột thể loại: Phim cổ trang nhưng thumbnail chứa từ khóa '{kw.upper()}'"
+                    return False, metrics
+
+        return True, metrics
+
+    @classmethod
     def get_video_duration(cls, video_path: str) -> float:
         """Đo thời lượng video bằng ffprobe."""
         if not os.path.exists(video_path):
@@ -422,9 +522,10 @@ class QualityValidator:
         report["checks"]["video_resolution_standard"] = v_ok
         report["metrics"]["video_specs"] = v_info
 
-        # 2. Kiểm tra File Thumbnail
-        t_ok = os.path.exists(thumbnail_path) and os.path.getsize(thumbnail_path) > 10000
+        # 2. Kiểm tra File Thumbnail & Tính nhất quán Thể loại
+        t_ok, t_metrics = cls.check_thumbnail_consistency(thumbnail_path, seo_data, output_dir)
         report["checks"]["thumbnail_exists"] = t_ok
+        report["metrics"]["thumbnail_consistency"] = t_metrics
 
         # 3. Kiểm tra Tỷ lệ phủ giọng đọc (Khóa cứng 85% - 95%)
         coverage_ok = (85.0 <= overall_coverage <= 95.0)
@@ -549,7 +650,12 @@ class QualityValidator:
             json.dump(report, f, ensure_ascii=False, indent=2)
 
         # In rõ ràng ra stdout bảng 13/13 tiêu chí QA Gate (tên tiêu chí, PASS/FAIL, giá trị thực tế vs ngưỡng)
-        thumb_size_str = f"{os.path.getsize(thumbnail_path)/1024:.1f} KB" if os.path.exists(thumbnail_path) else "Không tồn tại"
+        if t_ok:
+            genre_tag = t_metrics.get("genre") or "ok"
+            thumb_desc = f"{t_metrics.get('size_kb', 0)}KB [{genre_tag}]: {t_metrics.get('line1', '')[:10]}/{t_metrics.get('line2', '')[:10]}"
+        else:
+            thumb_desc = f"Lỗi: {t_metrics.get('error', 'Không hợp lệ')}"
+
         v_res_str = f"{v_info.get('width')}x{v_info.get('height')} ({v_info.get('video_codec')}/{v_info.get('audio_codec')})" if v_ok else f"Lỗi: {v_info.get('error', 'Không hợp lệ')}"
         outro_diff_str = f"Chênh: {outro_metrics.get('diff_db', 'N/A')} dB" if outro_metrics.get("diff_db") is not None else "Không đo được"
         if outro_metrics.get("note"):
@@ -563,7 +669,7 @@ class QualityValidator:
 
         table_rows = [
             (1, "Độ phân giải & Codec", "video_resolution_standard", v_res_str, "720x1280 hoặc 1280x720"),
-            (2, "Tồn tại Thumbnail", "thumbnail_exists", thumb_size_str, "Tồn tại & > 10 KB"),
+            (2, "Thumbnail & Thể loại", "thumbnail_exists", thumb_desc, "Tồn tại > 10 KB & đúng thể loại"),
             (3, "Tỷ lệ phủ giọng đọc", "audio_coverage_target", f"{overall_coverage:.1f}%", "85.0% - 95.0%"),
             (4, "Khoảng lặng âm thanh", "no_dead_silence", f"{max_silence:.2f}s", "<= 4.00s"),
             (5, "Nhận diện thương hiệu", "brand_cool_meo_phim_included", "Tìm thấy 'Cool Mèo Phim'" if has_brand else "Thiếu 'Cool Mèo Phim'", "Chứa 'Cool Mèo Phim'"),

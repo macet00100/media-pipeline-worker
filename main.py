@@ -493,7 +493,7 @@ def process_drama_voice_driven(
             output_master_ass=pkg_ass_path
         )
 
-        # BƯỚC 4: Tạo SEO Package & Thumbnail chuẩn Trọn Bộ
+        # BƯỚC 4: Tạo SEO Package & Thumbnail chuẩn Trọn Bộ (Single Source of Truth)
         if not multimodal_primary:
             multimodal_primary = {
                 "vietnamese_title": movie_title,
@@ -503,11 +503,23 @@ def process_drama_voice_driven(
         vietnamese_title = multimodal_primary.get("vietnamese_title", movie_title)
         thumbnail_title = multimodal_primary.get("thumbnail_title", "SỰ THẬT KINH HOÀNG")
 
+        # Gom toàn bộ lời thoại script từ combined_blocks thành nguồn sự thật duy nhất
+        full_script_corpus = " ".join([b.get("script", "") for b in combined_blocks])
+
+        genre = SEOGenerator.detect_genre(
+            movie_title=vietnamese_title or movie_title,
+            rolling_summary=story_bible.rolling_summary,
+            script_corpus=full_script_corpus
+        )
+        print(f"[PIPELINE] 🎯 Thể loại phim xác định: {genre} ({SEOGenerator.GENRE_NAMES_VI.get(genre, genre)})")
+
         seo_data = SEOGenerator.generate_seo_package(
             raw_title=movie_title,
             vietnamese_title=vietnamese_title,
             thumbnail_title=thumbnail_title,
-            rolling_summary=story_bible.rolling_summary
+            rolling_summary=story_bible.rolling_summary,
+            script_corpus=full_script_corpus,
+            genre=genre
         )
         SEOGenerator.export_seo_files(seo_data, str(package_dir))
 
@@ -527,17 +539,19 @@ def process_drama_voice_driven(
                 "series_title": movie_title,
                 "vietnamese_title": vietnamese_title,
                 "total_episodes": total_episodes,
-                "rolling_summary": story_bible.rolling_summary
+                "rolling_summary": story_bible.rolling_summary,
+                "genre": genre
             },
             layers=seo_data.get("thumbnail_layers")
         )
 
-        # Lưu story_bible.json vào package_dir
+        # Lưu story_bible.json vào package_dir kèm thể loại genre
         with open(package_dir / "story_bible.json", "w", encoding="utf-8") as f:
             json.dump({
                 "series_id": movie_id,
                 "series_title": movie_title,
                 "vietnamese_title": vietnamese_title,
+                "genre": genre,
                 "total_episodes": total_episodes,
                 "character_glossary": story_bible.character_glossary,
                 "rolling_summary": story_bible.rolling_summary

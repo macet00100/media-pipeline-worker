@@ -737,4 +737,22 @@ class ThumbnailMaker:
             bg_image=bg_h
         )
 
+        # 3. Ghi metadata text thumbnail nếu thư mục chưa có (phục vụ QA Gate đối chiếu trực tiếp)
+        out_dir = Path(output_vertical_path).parent
+        meta_file = out_dir / "thumbnail_metadata.json"
+        if not meta_file.exists():
+            try:
+                g = (story_bible.get("genre") if story_bible else "") or "modern"
+                actual_layers = layers or cls.parse_layers_from_title(catchy_title)
+                import json
+                with open(meta_file, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "genre": g,
+                        "line1_red_brush": actual_layers.get("line1_red_brush", "TRỌN BỘ FULL"),
+                        "line2_big_yellow": actual_layers.get("line2_big_yellow", catchy_title),
+                        "line3_yellow_block": actual_layers.get("line3_yellow_block", "KỊCH TÍNH NGHẸT THỞ!")
+                    }, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+
         return output_vertical_path, output_horizontal_path
