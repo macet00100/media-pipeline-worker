@@ -428,9 +428,9 @@ class Downloader:
 
         # Cấu hình chống rate-limit & xoay vòng
         max_circuits = 15
-        overall_deadline = time.time() + 900.0  # Tổng timeout 900s (15 phút)
+        overall_deadline = time.time() + 1200.0  # Tổng timeout 1200s (20 phút)
         proxy_desc = f"qua Tor ({base_proxy})" if base_proxy else "trực tiếp (không proxy)"
-        print(f"[Downloader] 🚀 Khởi chạy tải phân đoạn an toàn ({total_segments} mảnh) {proxy_desc} [Max 15 mạch Tor | 4 threads | 900s timeout]...")
+        print(f"[Downloader] 🚀 Khởi chạy tải phân đoạn an toàn ({total_segments} mảnh) {proxy_desc} [Max 15 mạch Tor | 4 threads | 1200s timeout]...")
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0",
@@ -444,7 +444,7 @@ class Downloader:
 
         for circuit_attempt in range(1, max_circuits + 1):
             if time.time() >= overall_deadline:
-                print(f"[Downloader] ⚠️ Đã chạm trần thời gian tối đa cho phép (900s).")
+                print(f"[Downloader] ⚠️ Đã chạm trần thời gian tối đa cho phép (1200s).")
                 break
 
             # Quét kiểm tra các file .ts hợp lệ đã có trong thư mục tạm (Resume)
@@ -580,7 +580,7 @@ class Downloader:
                                 break
 
                         if time.time() >= overall_deadline:
-                            print("[Downloader] ⚠️ Chạm trần thời gian tối đa 900s. Hủy mạch...")
+                            print("[Downloader] ⚠️ Chạm trần thời gian tối đa 1200s. Hủy mạch...")
                             abort_event.set()
                             for f in futures:
                                 f.cancel()

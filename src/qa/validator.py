@@ -536,6 +536,8 @@ class QualityValidator:
                 "compression_ratio_percent": round(comp_ratio * 100, 2),
                 "minimum_required_percent": 8.0
             }
+        else:
+            report["checks"]["compression_ratio_standard"] = True
 
         # Đánh giá tổng thể
         all_passed = all(report["checks"].values())

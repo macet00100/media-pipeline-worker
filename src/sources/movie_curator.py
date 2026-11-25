@@ -271,8 +271,8 @@ class MovieCurator:
 
                         if len(downloaded_data) < 64 * 1024:
                             return False, f"ts_segment_too_short ({len(downloaded_data)/1024:.1f}KB)"
-                        if speed_kb_s < 80:  # Ngưỡng tối thiểu an toàn qua Tor/CDN
-                            return False, f"ts_speed_too_slow ({speed_kb_s:.1f}KB/s < 80KB/s)"
+                        if speed_kb_s < 25:  # Ngưỡng tối thiểu an toàn qua Tor/CDN (tránh đo sai do độ trễ handshake)
+                            return False, f"ts_speed_too_slow ({speed_kb_s:.1f}KB/s < 25KB/s)"
 
                         print(f"[Curator] ✅ Khám link sống & tải mẫu .ts mượt: {ts_url[:65]}... ({len(downloaded_data)/1024:.0f}KB, {speed_kb_s:.1f} KB/s)")
                     except Exception as e:
