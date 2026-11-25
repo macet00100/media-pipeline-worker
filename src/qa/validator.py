@@ -537,5 +537,8 @@ class QualityValidator:
         with open(qa_path, "w", encoding="utf-8") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
 
+        failed_checks = [k for k, v in report["checks"].items() if not v]
+        if failed_checks:
+            print(f"[QualityValidator] ⚠️ CÁC TIÊU CHÍ QA KHÔNG ĐẠT ({len(failed_checks)}/{len(report['checks'])}): {failed_checks}")
         print(f"[QualityValidator] Báo cáo QA: {'✅ ĐẠT CHUẨN' if all_passed else '⚠️ CẢNH BÁO'}. Chi tiết: {qa_path}")
         return report
