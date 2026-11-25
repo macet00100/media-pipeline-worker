@@ -104,7 +104,7 @@ jobs:
           sudo tee /etc/tor/torrc << 'EOF'
           HTTPTunnelPort 9080
           SocksPort 9050
-          ControlPort 9051
+          ControlPort 127.0.0.1:9051
           CookieAuthentication 0
           ExitNodes {hk},{mo},{tw},{jp},{sg}
           StrictNodes 1
@@ -120,11 +120,13 @@ jobs:
                 echo "🎉 XÁC NHẬN THÔNG MẠNG 100% TỚI LIANGZI CDN (HTTP 200 OK)!"
                 break
               fi
-              # Nếu chưa phải 200, yêu cầu Tor tạo mạch mới
-              sudo systemctl reload tor || true
+              # Nếu chưa phải 200, yêu cầu Tor tạo mạch mới qua ControlPort 9051
+              python3 -c "import socket; s=socket.create_connection(('127.0.0.1',9051), timeout=3); s.sendall(b'AUTHENTICATE \"\"\r\nSIGNAL NEWNYM\r\n'); print('NEWNYM:', s.recv(1024).decode().strip())" 2>/dev/null || sudo systemctl reload tor || true
             fi
             sleep 2
           done
+          echo "Kiểm tra quyền gửi lệnh ControlPort 9051 từ runner..."
+          python3 -c "import socket; s=socket.create_connection(('127.0.0.1',9051), timeout=3); s.sendall(b'AUTHENTICATE \"\"\r\nSIGNAL NEWNYM\r\n'); res=s.recv(1024).decode(); print('Tor ControlPort Check:', res.strip())" || true
 
       - name: 📦 Cài đặt thư viện Python
         run: |

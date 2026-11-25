@@ -1,6 +1,8 @@
 import os
 import re
 import time
+import socket
+import random
 import urllib.request
 import urllib.parse
 import subprocess
@@ -227,26 +229,72 @@ class Downloader:
     def reload_tor_circuit(cls) -> bool:
         """
         Tự động đổi mạch Tor mới (new circuit) khi gặp 403 Forbidden hoặc timeout CDN.
-        Gửi tín hiệu SIGHUP tới daemon Tor trên Linux/GitHub Actions runner.
+        Gửi lệnh:
+            AUTHENTICATE ""\r\n
+            SIGNAL NEWNYM\r\n
+        trực tiếp qua socket 127.0.0.1:9051 (ControlPort), nhận phản hồi '250 OK'.
+        Fallback sang sudo systemctl reload tor nếu socket thất bại.
+        Chờ 4s sau khi gửi lệnh để Tor kịp thiết lập mạch thoát mới.
         """
         proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
         if not proxy:
             return False
+
+        print("[Downloader] 🔄 Gửi tín hiệu đổi mạch Tor (SIGNAL NEWNYM qua ControlPort 127.0.0.1:9051)...")
+        # 1. Thử gửi lệnh trực tiếp qua Tor ControlPort socket
+        try:
+            with socket.create_connection(("127.0.0.1", 9051), timeout=5) as s:
+                s.sendall(b'AUTHENTICATE ""\r\n')
+                auth_resp = s.recv(1024).decode("ascii", errors="ignore")
+                if "250" in auth_resp:
+                    s.sendall(b'SIGNAL NEWNYM\r\n')
+                    sig_resp = s.recv(1024).decode("ascii", errors="ignore")
+                    if "250" in sig_resp:
+                        print("[Downloader] ✅ Tor ControlPort: Gửi SIGNAL NEWNYM thành công (250 OK). Chờ 4s để mạch Tor mới sẵn sàng...")
+                        time.sleep(4)
+                        return True
+                    else:
+                        print(f"[Downloader] ⚠️ Tor ControlPort SIGNAL không trả lời 250 OK: {sig_resp.strip()}")
+                else:
+                    print(f"[Downloader] ⚠️ Tor ControlPort AUTHENTICATE thất bại: {auth_resp.strip()}")
+        except Exception as e:
+            print(f"[Downloader] ⚠️ Không thể kết nối Tor ControlPort (127.0.0.1:9051): {e}")
+
+        # 2. Fallback: sudo systemctl reload tor
         if os.name != "nt":
-            print("[Downloader] 🔄 Phát hiện lỗi CDN/403/Timeout -> Gửi tín hiệu reload mạch Tor (pkill -HUP tor)...")
+            print("[Downloader] 🔄 Fallback: Thử reload daemon Tor bằng sudo systemctl reload tor...")
+            try:
+                res = subprocess.run(["sudo", "systemctl", "reload", "tor"], capture_output=True, timeout=5)
+                if res.returncode == 0:
+                    print("[Downloader] ✅ Fallback sudo systemctl reload tor thành công. Chờ 4s...")
+                    time.sleep(4)
+                    return True
+            except Exception:
+                pass
             try:
                 subprocess.run(["pkill", "-HUP", "tor"], capture_output=True, timeout=5)
-                time.sleep(2)
-                print("[Downloader] ✅ Đã gửi lệnh reload mạch Tor thành công.")
+                time.sleep(4)
                 return True
             except Exception:
-                try:
-                    subprocess.run(["sudo", "systemctl", "reload", "tor"], capture_output=True, timeout=5)
-                    time.sleep(2)
-                    return True
-                except Exception:
-                    pass
+                pass
+
         return False
+
+    @classmethod
+    def _is_valid_ts_file(cls, path: Path) -> bool:
+        """Kiểm tra phân đoạn .ts hợp lệ: tồn tại, kích thước > 1024 bytes và không phải HTML lỗi."""
+        try:
+            if not path.exists():
+                return False
+            if path.stat().st_size <= 1024:
+                return False
+            with open(path, "rb") as f:
+                head = f.read(64).lower()
+            if head.startswith(b"<html") or head.startswith(b"<!doctype"):
+                return False
+            return True
+        except Exception:
+            return False
 
     @classmethod
     def _parse_m3u8_segments(cls, stream_url: str, max_seconds: int = 7200) -> Tuple[List[Tuple[int, str, float]], str]:
@@ -354,7 +402,9 @@ class Downloader:
     def download_segment_to_mp4(cls, stream_url: str, output_path: str, max_seconds: int = 7200) -> bool:
         """
         Tải một luồng stream m3u8 thành file mp4 bằng cơ chế tải phân đoạn song song qua requests.Session,
-        giám sát tốc độ thông minh (> 150 KB/s), tự động đổi mạch Tor khi bị bóp băng thông, và ghép nối siêu tốc bằng FFmpeg.
+        hỗ trợ tải nối tiếp (resume), ghi file nguyên tử (.ts.part -> .ts), chống dính Keep-Alive,
+        tự động đổi mạch Tor qua ControlPort 9051 (tối đa 15 mạch, timeout 900s, 4 threads, jitter delay 0.10s-0.18s),
+        và ghép nối siêu tốc bằng FFmpeg.
         """
         t0 = time.time()
         tmp_dir = Path(output_path).parent
@@ -372,40 +422,57 @@ class Downloader:
             print(f"[Downloader] ⚠️ Không trích xuất được phân đoạn M3U8 từ: {stream_url}. Thử tải trực tiếp stream...")
             return cls._fallback_direct_download(stream_url, output_path, max_seconds, base_proxy, is_ffzy)
 
-        # 2. Cấu hình tải phân đoạn song song qua requests.Session
-        max_circuits = 3
-        overall_deadline = time.time() + 600.0  # Trần tối đa 600s (10 phút)
+        # 2. Thư mục lưu phân đoạn tạm (Cố định theo file output để hỗ trợ Tải nối tiếp / Resume qua nhiều mạch Tor)
+        seg_dir = tmp_dir / f"ts_parts_{Path(output_path).stem}"
+        seg_dir.mkdir(parents=True, exist_ok=True)
+
+        # Cấu hình chống rate-limit & xoay vòng
+        max_circuits = 15
+        overall_deadline = time.time() + 900.0  # Tổng timeout 900s (15 phút)
         proxy_desc = f"qua Tor ({base_proxy})" if base_proxy else "trực tiếp (không proxy)"
-        print(f"[Downloader] 🚀 Khởi chạy tải song song {total_segments} phân đoạn {proxy_desc} (6 threads)...")
+        print(f"[Downloader] 🚀 Khởi chạy tải phân đoạn an toàn ({total_segments} mảnh) {proxy_desc} [Max 15 mạch Tor | 4 threads | 900s timeout]...")
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0",
+            "Accept": "*/*",
+            "Connection": "keep-alive"
+        }
+        if is_ffzy:
+            headers["Referer"] = "https://ffzy1.tv/"
+
+        downloaded_files: Dict[int, Path] = {}
 
         for circuit_attempt in range(1, max_circuits + 1):
             if time.time() >= overall_deadline:
-                print("[Downloader] ⚠️ Đã chạm trần thời gian tối đa cho phép (600s).")
+                print(f"[Downloader] ⚠️ Đã chạm trần thời gian tối đa cho phép (900s).")
                 break
 
+            # Quét kiểm tra các file .ts hợp lệ đã có trong thư mục tạm (Resume)
+            downloaded_files = {}
+            for s in segments:
+                dest = seg_dir / f"seg_{s[0]:05d}.ts"
+                if cls._is_valid_ts_file(dest):
+                    downloaded_files[s[0]] = dest
+
+            if len(downloaded_files) == total_segments:
+                print(f"[Downloader] 🎯 Đã có đủ 100% ({total_segments}/{total_segments}) phân đoạn hợp lệ.")
+                break
+
+            # Nếu từ mạch 2 trở đi: Kích hoạt đổi IP Tor mới (reload_tor_circuit chờ 4s)
             if circuit_attempt > 1:
-                print(f"[Downloader] 🧅 Mạch Tor #{circuit_attempt}/{max_circuits}: Kích hoạt đổi IP Tor mới (reload_tor_circuit)...")
+                print(f"[Downloader] 🧅 Mạch Tor #{circuit_attempt}/{max_circuits}: Đổi IP Tor mới (reload_tor_circuit)...")
                 cls.reload_tor_circuit()
-                time.sleep(2)
 
-            seg_dir = tmp_dir / f"ts_parts_{int(time.time()*1000)}"
-            seg_dir.mkdir(parents=True, exist_ok=True)
+            missing_segments = [s for s in segments if s[0] not in downloaded_files]
+            print(f"[Downloader] 📦 Mạch #{circuit_attempt}/{max_circuits}: Đã tích lũy {len(downloaded_files)}/{total_segments} mảnh. Bắt đầu tải tiếp {len(missing_segments)} mảnh còn thiếu (4 threads)...")
 
+            # CHỐNG DÍNH KEEP-ALIVE: Khởi tạo lại Session mới hoàn toàn cho mỗi mạch
             session = requests.Session()
             retry_strategy = Retry(total=2, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504], raise_on_status=False)
-            adapter = HTTPAdapter(pool_connections=12, pool_maxsize=12, max_retries=retry_strategy)
+            adapter = HTTPAdapter(pool_connections=8, pool_maxsize=8, max_retries=retry_strategy)
             session.mount("http://", adapter)
             session.mount("https://", adapter)
-
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0",
-                "Accept": "*/*",
-                "Connection": "keep-alive"
-            }
-            if is_ffzy:
-                headers["Referer"] = "https://ffzy1.tv/"
             session.headers.update(headers)
-
             if base_proxy:
                 session.proxies.update({"http": base_proxy, "https": base_proxy})
 
@@ -415,10 +482,13 @@ class Downloader:
                 if abort_event.is_set():
                     return idx, None, 0, False
                 dest = seg_dir / f"seg_{idx:05d}.ts"
-                if dest.exists() and dest.stat().st_size > 500:
+                if cls._is_valid_ts_file(dest):
                     return idx, dest, dest.stat().st_size, True
 
-                tmp_dest = dest.with_suffix(".tmp")
+                part_dest = seg_dir / f"seg_{idx:05d}.ts.part"
+                # Thêm độ trễ ngẫu nhiên 0.10s - 0.18s giữa các request chống CDN rate-limit
+                time.sleep(random.uniform(0.10, 0.18))
+
                 for sub_try in range(2):
                     if abort_event.is_set():
                         return idx, None, 0, False
@@ -428,135 +498,146 @@ class Downloader:
                             ct = resp.headers.get("Content-Type", "").lower()
                             if "text/html" in ct:
                                 return idx, None, 0, False
+
                             size = 0
-                            with open(tmp_dest, "wb") as f:
+                            with open(part_dest, "wb") as f:
                                 for chunk in resp.iter_content(chunk_size=65536):
                                     if abort_event.is_set():
-                                        tmp_dest.unlink(missing_ok=True)
+                                        f.close()
+                                        part_dest.unlink(missing_ok=True)
                                         return idx, None, 0, False
                                     if chunk:
                                         f.write(chunk)
                                         size += len(chunk)
-                            if size > 500:
-                                tmp_dest.replace(dest)
+
+                            # Ghi file nguyên tử (Atomic Write): Kiểm tra HTTP 200, len > 1024, không bắt đầu bằng <html / <!DOCTYPE
+                            if cls._is_valid_ts_file(part_dest):
+                                os.replace(part_dest, dest)
                                 return idx, dest, size, True
                             else:
-                                tmp_dest.unlink(missing_ok=True)
+                                part_dest.unlink(missing_ok=True)
+                        elif resp.status_code in (403, 429):
+                            # CDN đã chặn IP / rate limit
+                            return idx, None, 0, False
                         elif resp.status_code == 404:
                             return idx, None, 0, False
                     except Exception:
-                        if tmp_dest.exists():
-                            tmp_dest.unlink(missing_ok=True)
+                        if part_dest.exists():
+                            part_dest.unlink(missing_ok=True)
                     if sub_try == 0 and not abort_event.is_set():
-                        time.sleep(0.5)
+                        time.sleep(0.3)
 
                 return idx, None, 0, False
 
-            downloaded_files: Dict[int, Path] = {}
-            total_downloaded_bytes = 0
-            completed_count = 0
+            circuit_downloaded_count = 0
+            circuit_downloaded_bytes = 0
             failed_count = 0
-            circuit_aborted = False
+            consecutive_fails = 0
             t_circuit_start = time.time()
             last_log_time = t_circuit_start
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-                futures = {executor.submit(download_one_segment, s[0], s[1]): s[0] for s in segments}
+            try:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                    futures = {executor.submit(download_one_segment, s[0], s[1]): s[0] for s in missing_segments}
 
-                for future in concurrent.futures.as_completed(futures):
-                    if circuit_aborted:
-                        break
+                    for future in concurrent.futures.as_completed(futures):
+                        idx, path, size, ok = future.result()
+                        if ok and path:
+                            circuit_downloaded_count += 1
+                            circuit_downloaded_bytes += size
+                            downloaded_files[idx] = path
+                            consecutive_fails = 0
+                        else:
+                            failed_count += 1
+                            consecutive_fails += 1
 
-                    idx, path, size, ok = future.result()
-                    if ok and path:
-                        completed_count += 1
-                        total_downloaded_bytes += size
-                        downloaded_files[idx] = path
-                    else:
-                        failed_count += 1
+                        now = time.time()
+                        elapsed = now - t_circuit_start
 
-                    now = time.time()
-                    elapsed = now - t_circuit_start
+                        # Log tiến độ định kỳ mỗi 5s hoặc khi hoàn tất toàn bộ
+                        if now - last_log_time >= 5.0 or len(downloaded_files) == total_segments:
+                            last_log_time = now
+                            speed_kb_s = (circuit_downloaded_bytes / 1024) / max(elapsed, 0.01)
+                            pct = int((len(downloaded_files) / total_segments) * 100)
+                            print(f"[Downloader] ⏳ Tiến độ: {len(downloaded_files)}/{total_segments} mảnh ({pct}%) | Mạch #{circuit_attempt}: +{circuit_downloaded_count} mảnh ({speed_kb_s:.1f} KB/s) | Lỗi: {failed_count}")
 
-                    # Log tiến độ định kỳ mỗi 5s hoặc khi hoàn tất
-                    if now - last_log_time >= 5.0 or completed_count == total_segments:
-                        last_log_time = now
-                        speed_kb_s = (total_downloaded_bytes / 1024) / max(elapsed, 0.01)
-                        pct = int((completed_count / total_segments) * 100)
-                        print(f"[Downloader] ⏳ Tiến độ: {completed_count}/{total_segments} mảnh ({pct}%) | Tốc độ: {speed_kb_s:.1f} KB/s | Lỗi: {failed_count} (Mạch #{circuit_attempt})")
-
-                    # Giám sát tốc độ & lỗi sau 20s đầu tiên
-                    if elapsed >= 20.0 and completed_count < total_segments:
-                        speed_kb_s = (total_downloaded_bytes / 1024) / elapsed
-                        if speed_kb_s < 150.0 or (failed_count > 5 and failed_count >= completed_count):
-                            print(f"[Downloader] ⚠️ Tốc độ qua Tor quá chậm ({speed_kb_s:.1f} KB/s < 150 KB/s) hoặc nhiều lỗi ({failed_count} lỗi / {completed_count} thành công) sau {elapsed:.1f}s -> Hủy mạch, đổi IP Tor mới...")
+                        # Phát hiện CDN rate-limit qua chuỗi lỗi liên tiếp (>= 8 lỗi liên tiếp)
+                        if consecutive_fails >= 8:
+                            print(f"[Downloader] ⚠️ Dính {consecutive_fails} lỗi liên tiếp (CDN rate-limit IP hiện tại) -> Hủy mạch #{circuit_attempt}, đổi IP Tor mới...")
                             abort_event.set()
-                            circuit_aborted = True
                             for f in futures:
                                 f.cancel()
                             break
 
-                    if time.time() >= overall_deadline:
-                        print("[Downloader] ⚠️ Chạm ngưỡng thời gian 600s. Hủy mạch...")
-                        abort_event.set()
-                        circuit_aborted = True
-                        for f in futures:
-                            f.cancel()
-                        break
+                        # Giám sát tốc độ & lỗi sau 15s đầu của mạch
+                        if elapsed >= 15.0 and len(downloaded_files) < total_segments:
+                            speed_kb_s = (circuit_downloaded_bytes / 1024) / elapsed
+                            if (speed_kb_s < 100.0 and circuit_downloaded_count < 3) or (failed_count >= 10 and failed_count > circuit_downloaded_count * 2):
+                                print(f"[Downloader] ⚠️ Mạch Tor #{circuit_attempt} chậm ({speed_kb_s:.1f} KB/s) hoặc nhiều lỗi ({failed_count} lỗi / {circuit_downloaded_count} thành công) -> Hủy mạch, đổi IP Tor mới...")
+                                abort_event.set()
+                                for f in futures:
+                                    f.cancel()
+                                break
 
-            session.close()
+                        if time.time() >= overall_deadline:
+                            print("[Downloader] ⚠️ Chạm trần thời gian tối đa 900s. Hủy mạch...")
+                            abort_event.set()
+                            for f in futures:
+                                f.cancel()
+                            break
+            finally:
+                # CHỐNG DÍNH KEEP-ALIVE: Bắt buộc gọi session.close() sau mỗi mạch
+                session.close()
 
-            if circuit_aborted:
-                shutil.rmtree(seg_dir, ignore_errors=True)
-                if circuit_attempt < max_circuits and time.time() < overall_deadline:
-                    time.sleep(2)
-                    continue
-                else:
-                    return False
+            # Dọn sạch các file .part dang dở, GIỮ NGUYÊN toàn bộ các file .ts hợp lệ đã tải
+            for p in seg_dir.glob("*.ts.part"):
+                try: p.unlink()
+                except: pass
 
-            # Kiểm tra nếu đủ toàn bộ phân đoạn
+            # Nếu đã có đủ toàn bộ phân đoạn, thoát vòng lặp mạch để ghép nối
             if len(downloaded_files) == total_segments:
-                total_elapsed = time.time() - t_circuit_start
-                total_mb = total_downloaded_bytes / (1024 * 1024)
-                avg_speed = (total_downloaded_bytes / 1024) / max(total_elapsed, 0.01)
-                print(f"[Downloader] ✅ Đã tải đủ {total_segments}/{total_segments} phân đoạn ({total_mb:.1f} MB, {avg_speed:.1f} KB/s) trong {total_elapsed:.1f}s.")
+                break
 
-                # Ghép nối siêu tốc nội bộ bằng FFmpeg concat (2 giây)
-                concat_file = seg_dir / "segments.txt"
-                with open(concat_file, "w", encoding="utf-8") as f:
-                    for i in range(total_segments):
-                        f.write(f"file 'seg_{i:05d}.ts'\n")
+        # 3. Kiểm tra kết quả và ghép nối FFmpeg concat
+        if len(downloaded_files) == total_segments:
+            total_elapsed = time.time() - t0
+            total_bytes = sum(f.stat().st_size for f in downloaded_files.values())
+            total_mb = total_bytes / (1024 * 1024)
+            avg_speed = (total_bytes / 1024) / max(total_elapsed, 0.01)
+            print(f"[Downloader] ✅ Đã tải đủ 100% ({total_segments}/{total_segments}) phân đoạn ({total_mb:.1f} MB, trung bình {avg_speed:.1f} KB/s) trong {total_elapsed:.1f}s.")
 
-                print(f"[Downloader] ⚡ Đang ghép nối {total_segments} phân đoạn bằng FFmpeg concat...")
-                t_concat = time.time()
-                concat_cmd = [
-                    "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                    "-i", str(concat_file),
-                    "-c", "copy",
-                    "-bsf:a", "aac_adtstoasc",
-                    output_path
-                ]
-                res = subprocess.run(concat_cmd, cwd=str(seg_dir), capture_output=True, text=True, timeout=120)
-                concat_dur = time.time() - t_concat
+            # Ghép nối siêu tốc nội bộ bằng FFmpeg concat
+            concat_file = seg_dir / "segments.txt"
+            with open(concat_file, "w", encoding="utf-8") as f:
+                for i in range(total_segments):
+                    f.write(f"file 'seg_{i:05d}.ts'\n")
 
-                if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000000:
-                    out_mb = os.path.getsize(output_path) / (1024 * 1024)
-                    print(f"[Downloader] 🎉 Ghép nối FFmpeg hoàn tất trong {concat_dur:.1f}s: {output_path} ({out_mb:.1f} MB)")
-                    shutil.rmtree(seg_dir, ignore_errors=True)
-                    return True
-                else:
-                    err = res.stderr[-300:] if res.stderr else "Unknown error"
-                    print(f"[Downloader] ❌ Lỗi FFmpeg concat: {err.strip()}")
-                    shutil.rmtree(seg_dir, ignore_errors=True)
-                    return False
-            else:
-                print(f"[Downloader] ⚠️ Thiếu phân đoạn ({len(downloaded_files)}/{total_segments}). Thử lại mạch khác...")
+            print(f"[Downloader] ⚡ Đang ghép nối {total_segments} phân đoạn bằng FFmpeg concat...")
+            t_concat = time.time()
+            concat_cmd = [
+                "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                "-i", str(concat_file),
+                "-c", "copy",
+                "-bsf:a", "aac_adtstoasc",
+                output_path
+            ]
+            res = subprocess.run(concat_cmd, cwd=str(seg_dir), capture_output=True, text=True, timeout=300)
+            concat_dur = time.time() - t_concat
+
+            if res.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1000000:
+                out_mb = os.path.getsize(output_path) / (1024 * 1024)
+                print(f"[Downloader] 🎉 Ghép nối FFmpeg hoàn tất trong {concat_dur:.1f}s: {output_path} ({out_mb:.1f} MB)")
                 shutil.rmtree(seg_dir, ignore_errors=True)
-                if circuit_attempt < max_circuits and time.time() < overall_deadline:
-                    time.sleep(2)
-                    continue
-
-        return False
+                return True
+            else:
+                err = res.stderr[-300:] if res.stderr else "Unknown error"
+                print(f"[Downloader] ❌ Lỗi FFmpeg concat: {err.strip()}")
+                shutil.rmtree(seg_dir, ignore_errors=True)
+                return False
+        else:
+            print(f"[Downloader] ❌ Thất bại: Chỉ tải được {len(downloaded_files)}/{total_segments} phân đoạn sau {max_circuits} mạch Tor.")
+            shutil.rmtree(seg_dir, ignore_errors=True)
+            return False
 
     @classmethod
     def download_drama(cls, drama: Dict[str, Any], output_path: str, max_duration_sec: int = 5400) -> bool:

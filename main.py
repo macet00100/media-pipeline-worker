@@ -759,7 +759,12 @@ def main():
         print(f"\n[MAIN] 🔍 Tái khám link sống trước khi tải: {cand['title']} ({cand['id']})...")
         is_alive, check_msg = MovieCurator.preflight_check_m3u8(m3u8_groups, timeout=8)
         if not is_alive:
-            print(f"[MAIN] ⚠️ Bỏ qua {cand['title']} ({cand['id']}) do link hỏng/404 ({check_msg}). Chuyển sang phim kế tiếp trong 1s...")
+            print(f"[MAIN] ⚠️ Tái khám link lần 1 chưa thành công ({check_msg}) -> Kích hoạt xoay mạch Tor mới và thử khám lại...")
+            Downloader.reload_tor_circuit()
+            is_alive, check_msg = MovieCurator.preflight_check_m3u8(m3u8_groups, timeout=12)
+
+        if not is_alive:
+            print(f"[MAIN] ⚠️ Bỏ qua {cand['title']} ({cand['id']}) do link hỏng/404 sau khi đã đổi mạch ({check_msg}). Chuyển sang phim kế tiếp...")
             StateManager.mark_failed(cand["id"], f"Pre-flight failed: {check_msg}", cand["title"])
             continue
 
