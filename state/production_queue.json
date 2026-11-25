@@ -18,7 +18,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "failed",
+      "status": "queued",
       "score": 75,
       "score_breakdown": {
         "hook_score": 22,
@@ -47,7 +47,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "failed",
+      "status": "queued",
       "score": 75,
       "score_breakdown": {
         "hook_score": 22,
@@ -76,7 +76,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "failed",
+      "status": "queued",
       "score": 78,
       "score_breakdown": {
         "hook_score": 25,
@@ -105,7 +105,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "failed",
+      "status": "queued",
       "score": 75,
       "score_breakdown": {
         "hook_score": 22,
@@ -134,7 +134,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "failed",
+      "status": "queued",
       "score": 79,
       "score_breakdown": {
         "hook_score": 22,
