@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple, Set
 
+import requests
+
 from config.settings import Settings, BASE_DIR, STATE_DIR
 from src.state.state_manager import StateManager
 from src.sources.cms_client import CMSClient
@@ -148,6 +150,9 @@ class MovieCurator:
     def _extract_first_ts_url(cls, m3u8_url: str, manifest_text: str) -> Optional[str]:
         """Trích xuất URL tuyệt đối của phân đoạn .ts đầu tiên từ manifest text (hỗ trợ cả master playlist)."""
         lines = [l.strip() for l in manifest_text.splitlines() if l.strip()]
+        proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+        proxies = {"http": proxy, "https": proxy} if proxy else None
+
         for line in lines:
             if line.startswith("#"):
                 continue
@@ -163,10 +168,9 @@ class MovieCurator:
                         child_url = f"{base}/{child_url}"
                 try:
                     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0"}
-                    req = urllib.request.Request(child_url, headers=headers)
-                    with urllib.request.urlopen(req, timeout=6) as resp:
-                        sub_text = resp.read(8192).decode("utf-8", errors="ignore")
-                        return cls._extract_first_ts_url(child_url, sub_text)
+                    resp = requests.get(child_url, headers=headers, proxies=proxies, timeout=6)
+                    if resp.status_code == 200:
+                        return cls._extract_first_ts_url(child_url, resp.text[:8192])
                 except Exception:
                     return None
 
@@ -185,9 +189,9 @@ class MovieCurator:
     @classmethod
     def preflight_check_m3u8(cls, m3u8_urls: List[str], timeout: int = 8) -> Tuple[bool, str]:
         """
-        Khám link sống nhanh (pre-flight check) trước khi nạp vào hàng chờ:
-        1. Kiểm tra HTTP GET đến tập đầu và tập cuối/giữa của m3u8_urls. Yêu cầu: HTTP 200 và chứa '#EXTM3U'.
-        2. Tải thử 256 KB phân đoạn .ts đầu tiên (timeout 10s, yêu cầu speed > 100 KB/s) để xác nhận CDN sống thực tế.
+        Khám link sống nhanh (pre-flight check) trước khi nạp vào hàng chờ hoặc trước khi tải:
+        1. Kiểm tra HTTP GET đến tập đầu và tập cuối/giữa của m3u8_urls qua đúng đường proxy của Downloader. Yêu cầu: HTTP 200 và chứa '#EXTM3U'.
+        2. Tải thử 256 KB phân đoạn .ts đầu tiên (timeout 10s, yêu cầu speed > 80 KB/s) để xác nhận CDN sống thực tế.
         Bỏ qua check mạng nếu URL là mock (phục vụ unit test offline).
         """
         if not m3u8_urls:
@@ -206,6 +210,10 @@ class MovieCurator:
         if is_mock:
             return True, "mock_bypass"
 
+        # Cấu hình proxy đồng bộ 100% với Downloader
+        proxy = os.getenv("http_proxy") or os.getenv("HTTP_PROXY") or os.getenv("https_proxy") or os.getenv("HTTPS_PROXY")
+        proxies = {"http": proxy, "https": proxy} if proxy else None
+
         # Tập đầu và tập cuối (hoặc tập giữa nếu có nhiều tập)
         check_indices = [0]
         if len(m3u8_urls) > 1:
@@ -214,7 +222,7 @@ class MovieCurator:
             check_indices.append(len(m3u8_urls) // 2)
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0",
             "Accept": "*/*"
         }
 
@@ -222,17 +230,16 @@ class MovieCurator:
         for idx in set(check_indices):
             url = m3u8_urls[idx]
             try:
-                req = urllib.request.Request(url, headers=headers)
-                with urllib.request.urlopen(req, timeout=timeout) as resp:
-                    if resp.status != 200:
-                        return False, f"http_status_{resp.status}_at_ep_{idx+1}"
-                    chunk = resp.read(16384).decode("utf-8", errors="ignore")
-                    if "#EXTM3U" not in chunk and "#EXT" not in chunk:
-                        return False, f"invalid_m3u8_header_at_ep_{idx+1}"
-                    if idx == 0:
-                        first_manifest_text = chunk
-            except urllib.error.HTTPError as e:
-                return False, f"http_error_{e.code}_at_ep_{idx+1}"
+                resp = requests.get(url, headers=headers, proxies=proxies, timeout=timeout)
+                if resp.status_code != 200:
+                    return False, f"http_status_{resp.status_code}_at_ep_{idx+1}"
+                chunk = resp.text[:16384]
+                if "<!DOCTYPE" in chunk or "<html" in chunk or "<title>404" in chunk:
+                    return False, f"html_error_page_at_ep_{idx+1}"
+                if "#EXTM3U" not in chunk and "#EXT" not in chunk:
+                    return False, f"invalid_m3u8_header_at_ep_{idx+1}"
+                if idx == 0:
+                    first_manifest_text = chunk
             except Exception as e:
                 return False, f"network_error_ep_{idx+1}_{str(e)[:40]}"
 
@@ -244,30 +251,30 @@ class MovieCurator:
                 if not ts_host.endswith(".m3u8") and not any(ind in ts_url.lower() for ind in mock_indicators) and ts_host:
                     try:
                         t_start = time.time()
-                        ts_req = urllib.request.Request(ts_url, headers=headers)
-                        with urllib.request.urlopen(ts_req, timeout=10) as ts_resp:
-                            if ts_resp.status != 200:
-                                return False, f"ts_segment_http_{ts_resp.status}"
+                        ts_resp = requests.get(ts_url, headers=headers, proxies=proxies, timeout=10, stream=True)
+                        if ts_resp.status_code != 200:
+                            return False, f"ts_segment_http_{ts_resp.status_code}"
+                        ct = ts_resp.headers.get("Content-Type", "").lower()
+                        if "text/html" in ct:
+                            return False, "ts_segment_is_html_error"
 
-                            target_bytes = 256 * 1024
-                            downloaded_data = b""
-                            while len(downloaded_data) < target_bytes:
-                                c = ts_resp.read(min(32768, target_bytes - len(downloaded_data)))
-                                if not c:
+                        target_bytes = 256 * 1024
+                        downloaded_data = b""
+                        for chunk in ts_resp.iter_content(chunk_size=32768):
+                            if chunk:
+                                downloaded_data += chunk
+                                if len(downloaded_data) >= target_bytes:
                                     break
-                                downloaded_data += c
 
-                            dt = max(time.time() - t_start, 0.01)
-                            speed_kb_s = (len(downloaded_data) / 1024) / dt
+                        dt = max(time.time() - t_start, 0.01)
+                        speed_kb_s = (len(downloaded_data) / 1024) / dt
 
-                            if len(downloaded_data) < 64 * 1024:
-                                return False, f"ts_segment_too_short ({len(downloaded_data)/1024:.1f}KB)"
-                            if speed_kb_s < 100:
-                                return False, f"ts_speed_too_slow ({speed_kb_s:.1f}KB/s < 100KB/s)"
+                        if len(downloaded_data) < 64 * 1024:
+                            return False, f"ts_segment_too_short ({len(downloaded_data)/1024:.1f}KB)"
+                        if speed_kb_s < 80:  # Ngưỡng tối thiểu an toàn qua Tor/CDN
+                            return False, f"ts_speed_too_slow ({speed_kb_s:.1f}KB/s < 80KB/s)"
 
-                            print(f"[Curator] ✅ Khám link sống & tải mẫu .ts mượt: {ts_url[:65]}... ({len(downloaded_data)/1024:.0f}KB, {speed_kb_s:.1f} KB/s)")
-                    except urllib.error.HTTPError as e:
-                        return False, f"ts_segment_http_error_{e.code}"
+                        print(f"[Curator] ✅ Khám link sống & tải mẫu .ts mượt: {ts_url[:65]}... ({len(downloaded_data)/1024:.0f}KB, {speed_kb_s:.1f} KB/s)")
                     except Exception as e:
                         return False, f"ts_segment_download_error_{str(e)[:40]}"
 

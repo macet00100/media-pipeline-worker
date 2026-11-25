@@ -749,6 +749,20 @@ def main():
             print(f"[MAIN] Bỏ qua phim đã xử lý hoặc đang chờ duyệt: {cand['title']} ({cand['id']})")
             continue
 
+        # Pre-flight check link sống trước khi tải: kiểm tra nhanh .m3u8 và mảnh .ts đầu tiên
+        m3u8_groups = cand.get("m3u8_groups", [])
+        if not m3u8_groups:
+            print(f"[MAIN] ⚠️ Bỏ qua {cand['title']} ({cand['id']}) do không có link m3u8.")
+            StateManager.mark_failed(cand["id"], "Không có link m3u8", cand["title"])
+            continue
+
+        print(f"\n[MAIN] 🔍 Tái khám link sống trước khi tải: {cand['title']} ({cand['id']})...")
+        is_alive, check_msg = MovieCurator.preflight_check_m3u8(m3u8_groups, timeout=8)
+        if not is_alive:
+            print(f"[MAIN] ⚠️ Bỏ qua {cand['title']} ({cand['id']}) do link hỏng/404 ({check_msg}). Chuyển sang phim kế tiếp trong 1s...")
+            StateManager.mark_failed(cand["id"], f"Pre-flight failed: {check_msg}", cand["title"])
+            continue
+
         print(f"\n[MAIN] >>> Bắt đầu sản xuất ứng viên: {cand['title']} ({cand['id']}) <<<")
         res = process_drama_voice_driven(cand, max_episodes=args.max_episodes)
         if res:

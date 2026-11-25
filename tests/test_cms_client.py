@@ -35,36 +35,31 @@ class TestCMSClientAndCuratorLinkSafety(unittest.TestCase):
     def test_preflight_check_m3u8_detects_http_404_and_invalid_header(self):
         """Kiểm tra preflight_check_m3u8 phát hiện link chết 404 và link không có #EXTM3U."""
         # Test link 404
-        with patch("urllib.request.urlopen") as mock_urlopen:
-            import urllib.error
-            mock_urlopen.side_effect = urllib.error.HTTPError(
-                url="https://real-cdn.com/test/index.m3u8",
-                code=404,
-                msg="Not Found",
-                hdrs={},
-                fp=None
-            )
+        with patch("requests.get") as mock_get:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 404
+            mock_get.return_value = mock_resp
             is_alive, reason = MovieCurator.preflight_check_m3u8(["https://real-cdn.com/test/index.m3u8"])
             self.assertFalse(is_alive)
             self.assertIn("404", reason)
 
         # Test link trả về HTML thay vì M3U8
-        with patch("urllib.request.urlopen") as mock_urlopen:
+        with patch("requests.get") as mock_get:
             mock_resp = MagicMock()
-            mock_resp.status = 200
-            mock_resp.read.return_value = b"<!DOCTYPE html><html><body>Error</body></html>"
-            mock_urlopen.return_value.__enter__.return_value = mock_resp
+            mock_resp.status_code = 200
+            mock_resp.text = "<!DOCTYPE html><html><body>Error</body></html>"
+            mock_get.return_value = mock_resp
 
             is_alive, reason = MovieCurator.preflight_check_m3u8(["https://real-cdn.com/test/index.m3u8"])
             self.assertFalse(is_alive)
-            self.assertIn("invalid_m3u8_header", reason)
+            self.assertTrue("html_error_page" in reason or "invalid_m3u8_header" in reason)
 
         # Test link M3U8 chuẩn 200 với #EXTM3U
-        with patch("urllib.request.urlopen") as mock_urlopen:
+        with patch("requests.get") as mock_get:
             mock_resp = MagicMock()
-            mock_resp.status = 200
-            mock_resp.read.return_value = b"#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:10.0,"
-            mock_urlopen.return_value.__enter__.return_value = mock_resp
+            mock_resp.status_code = 200
+            mock_resp.text = "#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:10.0,"
+            mock_get.return_value = mock_resp
 
             is_alive, reason = MovieCurator.preflight_check_m3u8(["https://real-cdn.com/test/index.m3u8"])
             self.assertTrue(is_alive)
@@ -72,25 +67,21 @@ class TestCMSClientAndCuratorLinkSafety(unittest.TestCase):
 
     def test_preflight_check_m3u8_ts_sample_verification(self):
         """Kiểm tra preflight_check_m3u8 tải thử mẫu 256 KB phân đoạn .ts và bắt lỗi tốc độ."""
-        # 1. Trả về manifest chứa URL .ts thật
-        manifest_data = b"#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:10.0,\nhttps://speed-cdn.com/seg1.ts"
-        # 256 KB dữ liệu mẫu
+        manifest_text = "#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:10.0,\nhttps://speed-cdn.com/seg1.ts"
         sample_ts_data = b"0" * (256 * 1024)
 
-        with patch("urllib.request.urlopen") as mock_urlopen:
+        with patch("requests.get") as mock_get:
             mock_manifest_resp = MagicMock()
-            mock_manifest_resp.status = 200
-            mock_manifest_resp.read.return_value = manifest_data
+            mock_manifest_resp.status_code = 200
+            mock_manifest_resp.text = manifest_text
+            mock_manifest_resp.headers = {"Content-Type": "application/vnd.apple.mpegurl"}
 
             mock_ts_resp = MagicMock()
-            mock_ts_resp.status = 200
-            mock_ts_resp.read.side_effect = [sample_ts_data[:65536], sample_ts_data[65536:131072], sample_ts_data[131072:], b""]
+            mock_ts_resp.status_code = 200
+            mock_ts_resp.headers = {"Content-Type": "video/mp2t"}
+            mock_ts_resp.iter_content = MagicMock(return_value=[sample_ts_data[:65536], sample_ts_data[65536:131072], sample_ts_data[131072:]])
 
-            # Lần gọi 1 là manifest, lần gọi 2 là .ts
-            mock_urlopen.side_effect = [
-                MagicMock(__enter__=MagicMock(return_value=mock_manifest_resp)),
-                MagicMock(__enter__=MagicMock(return_value=mock_ts_resp))
-            ]
+            mock_get.side_effect = [mock_manifest_resp, mock_ts_resp]
 
             is_alive, reason = MovieCurator.preflight_check_m3u8(["https://speed-cdn.com/index.m3u8"])
             self.assertTrue(is_alive)
