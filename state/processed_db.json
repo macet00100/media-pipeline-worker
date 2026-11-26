@@ -130,6 +130,26 @@
       "title": "前妻官宣后我重回巅峰",
       "reason": "Pre-flight failed: http_status_404_at_ep_1",
       "failed_at": "2026-11-25T23:09:51.472433"
+    },
+    "被羞辱当天我收回他的一切_20261126_040604": {
+      "title": "Review Trọn Bộ Ngày Nhục Nhã, Tôi Thu Hồi Tất Cả | Full Từ Đầu Đến Kết",
+      "reason": "Chặn vùng lãnh thổ do bản quyền (số quốc gia bị chặn: 249, chặn tại VN: True)",
+      "failed_at": "2026-11-26T04:48:51.389983"
+    },
+    "lz_168033": {
+      "title": "权臣的掌中娇是法医",
+      "reason": "Pre-flight failed: http_status_404_at_ep_1",
+      "failed_at": "2026-11-26T04:48:58.892449"
+    },
+    "lz_168032": {
+      "title": "那碗粥里到底有什么",
+      "reason": "Pre-flight failed: http_status_404_at_ep_1",
+      "failed_at": "2026-11-26T04:49:06.495133"
+    },
+    "lz_164333": {
+      "title": "四时有信浮光秋色",
+      "reason": "Pre-flight failed: http_status_404_at_ep_1",
+      "failed_at": "2026-11-26T04:49:14.132401"
     }
   },
   "pending_review": {
@@ -199,5 +219,5 @@
       "completed_at": "2026-11-25T11:36:34.679007"
     }
   },
-  "last_updated": "2026-11-25T23:09:51.472467"
+  "last_updated": "2026-11-26T04:49:14.132438"
 }

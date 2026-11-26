@@ -144,8 +144,94 @@
         "total_score": 79,
         "reasoning": "Phim có đề tài viral [重回], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
       }
+    },
+    {
+      "id": "lz_168033",
+      "vod_id": "168033",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "权臣的掌中娇是法医",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/4b951054e8f62e62a90b654349276380.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15586_42410a1d/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-26T04:05:58.693316"
+    },
+    {
+      "id": "lz_168032",
+      "vod_id": "168032",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "那碗粥里到底有什么",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/50bbd90f8d03bcda3f1faa70bdfadcbb.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15584_88d8f234/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-26T04:05:58.693316"
+    },
+    {
+      "id": "lz_164333",
+      "vod_id": "164333",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "四时有信浮光秋色",
+      "category": "long_series",
+      "episodes_count": 6,
+      "total_episodes": 6,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 73,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 15,
+        "total_score": 73,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 6 tập (Đã Full), nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261031-1/c804ff02bcbbe6127867835500fe80ef.jpg",
+      "m3u8_groups": [
+        "https://v.lzcdn27.com/20261031/20823_0a6faa7b/index.m3u8",
+        "https://v.lzcdn27.com/20261031/20824_7ba136d1/index.m3u8",
+        "https://v.lzcdn27.com/20261107/21644_4cb8db6a/index.m3u8",
+        "https://v.lzcdn27.com/20261107/21643_cfa4fd87/index.m3u8",
+        "https://v.lzcdn27.com/20261114/22031_7d479392/index.m3u8",
+        "https://v.lzcdn27.com/20261114/22030_ebc11cff/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-26T04:05:58.693316"
     }
   ],
-  "total_items": 5,
-  "last_updated": "2026-11-25T23:09:51.473466"
+  "total_items": 8,
+  "last_updated": "2026-11-26T04:49:14.133187"
 }
