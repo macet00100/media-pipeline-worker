@@ -150,6 +150,11 @@
       "title": "四时有信浮光秋色",
       "reason": "Pre-flight failed: http_status_404_at_ep_1",
       "failed_at": "2026-11-26T04:49:14.132401"
+    },
+    "lz_168036": {
+      "title": "被羞辱当天，我收回他的一切",
+      "reason": "Tải tập #1 thất bại từ: https://lzv34.com/20261123/15588_5143eefd/index.m3u8",
+      "failed_at": "2026-11-26T07:11:30.393868"
     }
   },
   "pending_review": {
@@ -219,5 +224,5 @@
       "completed_at": "2026-11-25T11:36:34.679007"
     }
   },
-  "last_updated": "2026-11-26T04:49:14.132438"
+  "last_updated": "2026-11-26T07:11:30.393899"
 }
