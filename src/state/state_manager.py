@@ -17,6 +17,7 @@ class StateManager:
             initial_data = {
                 "processed_ids": [],
                 "failed_ids": {},
+                "copyright_blocked_ids": {},
                 "pending_review": {},
                 "completed": {},
                 "last_updated": datetime.now().isoformat()
@@ -28,12 +29,13 @@ class StateManager:
                 data = json.load(f)
                 data.setdefault("processed_ids", [])
                 data.setdefault("failed_ids", {})
+                data.setdefault("copyright_blocked_ids", {})
                 data.setdefault("pending_review", {})
                 data.setdefault("completed", {})
                 return data
         except Exception as e:
             print(f"[STATE] Lỗi đọc state: {e}")
-            return {"processed_ids": [], "failed_ids": {}, "pending_review": {}, "completed": {}}
+            return {"processed_ids": [], "failed_ids": {}, "copyright_blocked_ids": {}, "pending_review": {}, "completed": {}}
 
     @classmethod
     def _save(cls, data: Dict[str, Any]):
@@ -60,7 +62,13 @@ class StateManager:
     @classmethod
     def is_failed(cls, movie_id: str) -> bool:
         data = cls._load()
-        return movie_id in data.get("failed_ids", {})
+        return (movie_id in data.get("failed_ids", {}) or
+                movie_id in data.get("copyright_blocked_ids", {}))
+
+    @classmethod
+    def is_copyright_blocked(cls, movie_id: str) -> bool:
+        data = cls._load()
+        return movie_id in data.get("copyright_blocked_ids", {})
 
     @classmethod
     def get_ignored_ids(cls) -> set:
@@ -68,6 +76,7 @@ class StateManager:
         return (set(data.get("processed_ids", [])) |
                 set(data.get("pending_review", {}).keys()) |
                 set(data.get("failed_ids", {}).keys()) |
+                set(data.get("copyright_blocked_ids", {}).keys()) |
                 set(data.get("completed", {}).keys()))
 
     @classmethod
@@ -180,14 +189,31 @@ class StateManager:
     @classmethod
     def mark_failed(cls, movie_id: str, reason: str, title: str = ""):
         data = cls._load()
+        now_iso = datetime.now().isoformat()
+        is_copyright = any(k in reason.lower() for k in ("copyright", "bản quyền", "chặn", "blocked"))
+
+        if is_copyright:
+            data.setdefault("copyright_blocked_ids", {})
+            data["copyright_blocked_ids"][movie_id] = {
+                "title": title,
+                "reason": reason,
+                "blocked_at": now_iso
+            }
+
+        data.setdefault("failed_ids", {})
         data["failed_ids"][movie_id] = {
             "title": title,
             "reason": reason,
-            "failed_at": datetime.now().isoformat()
+            "failed_at": now_iso
         }
         cls._save(data)
-        cls.update_queue_status(movie_id, "failed")
-        print(f"[STATE] Đánh dấu phim lỗi [{movie_id}]: {reason}")
+        cls.update_queue_status(movie_id, "copyright_blocked" if is_copyright else "failed")
+        print(f"[STATE] Đánh dấu phim lỗi [{movie_id}] (status={'copyright_blocked' if is_copyright else 'failed'}): {reason}")
+
+    @classmethod
+    def mark_copyright_blocked(cls, movie_id: str, reason: str, title: str = ""):
+        """Đánh dấu vĩnh viễn phim bị chặn bản quyền (YouTube Content ID hoặc Facebook Rights Manager)."""
+        cls.mark_failed(movie_id, reason=f"Copyright blocked: {reason}", title=title)
 
     @classmethod
     def sync_to_git(cls, commit_msg: str = "chore(state): update state files [skip ci]"):
@@ -206,6 +232,7 @@ class StateManager:
             res = subprocess.run(["git", "diff", "--cached", "--quiet"], check=False)
             if res.returncode != 0:
                 subprocess.run(["git", "commit", "-m", commit_msg], check=False)
+                subprocess.run(["git", "pull", "--rebase"], check=False)
                 subprocess.run(["git", "push"], check=False)
                 print("[STATE] Đã đồng bộ processed_db.json, production_queue.json & schedule_calendar.json lên GitHub.")
         except Exception as e:

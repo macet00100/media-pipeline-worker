@@ -604,7 +604,13 @@ def process_drama_voice_driven(
 
         # Kiểm tra nếu bị YouTube Content ID chặn bản quyền -> Tự hủy gói và chuyển phim tiếp theo
         if publish_res.get("copyright_blocked") or publish_res.get("youtube", {}).get("copyright_blocked"):
-            print(f"[MAIN] ⚠️ Video [{movie_title}] bị YouTube Content ID chặn bản quyền. Đã tự động xóa sạch video khỏi kênh và hủy gói.")
+            block_reason = (
+                publish_res.get("reason")
+                or publish_res.get("youtube", {}).get("reason")
+                or "Chặn bản quyền Content ID / Rights Manager"
+            )
+            print(f"[MAIN] ⚠️ Video [{movie_title}] bị YouTube Content ID chặn bản quyền: {block_reason}. Đã tự động xóa sạch video khỏi kênh và hủy gói.")
+            StateManager.mark_copyright_blocked(movie_id, block_reason, movie_title)
             return None
 
         StateManager.mark_pending_review(movie_id, {

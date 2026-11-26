@@ -153,8 +153,13 @@
     },
     "lz_168036": {
       "title": "被羞辱当天，我收回他的一切",
-      "reason": "Tải tập #1 thất bại từ: https://lzv34.com/20261123/15588_5143eefd/index.m3u8",
-      "failed_at": "2026-11-26T07:11:30.393868"
+      "reason": "Chặn vùng lãnh thổ do bản quyền YouTube Content ID (số quốc gia bị chặn: 249, chặn tại VN: True)",
+      "failed_at": "2026-11-26T04:48:51.389983"
+    },
+    "test_package": {
+      "title": "test_package",
+      "reason": "blocked_worldwide_by_kuaikan",
+      "failed_at": "2026-11-26T19:20:34.111501"
     }
   },
   "pending_review": {
@@ -224,5 +229,17 @@
       "completed_at": "2026-11-25T11:36:34.679007"
     }
   },
-  "last_updated": "2026-11-26T07:11:30.393899"
+  "last_updated": "2026-11-26T19:20:34.111501",
+  "copyright_blocked_ids": {
+    "lz_168036": {
+      "title": "被羞辱当天，我收回他的一切",
+      "reason": "Chặn vùng lãnh thổ do bản quyền YouTube Content ID (số quốc gia bị chặn: 249, chặn tại VN: True)",
+      "blocked_at": "2026-11-26T04:48:51.389983"
+    },
+    "test_package": {
+      "title": "test_package",
+      "reason": "blocked_worldwide_by_kuaikan",
+      "blocked_at": "2026-11-26T19:20:34.111501"
+    }
+  }
 }

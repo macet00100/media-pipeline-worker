@@ -657,15 +657,15 @@ class Publisher:
             except Exception as te:
                 print(f"[Facebook Upload] ⚠️ Cảnh báo thumbnail Facebook: {te}")
 
-        # PHA NGÂM KIỂM TRA BẢN QUYỀN (SOAK CHECK 5 PHÚT)
-        soak_sec = soak_seconds if soak_seconds is not None else int(os.getenv("FB_SOAK_SECONDS", "300"))
+        # PHA NGÂM KIỂM TRA BẢN QUYỀN (SOAK CHECK 30S)
+        soak_sec = soak_seconds if soak_seconds is not None else int(os.getenv("FB_SOAK_SECONDS", "30"))
         if soak_sec > 0:
             soak_res = cls.soak_and_verify_facebook_copyright(
                 video_id=final_video_id,
                 access_token=token,
                 title=clean_title,
                 soak_seconds=soak_sec,
-                poll_interval=30
+                poll_interval=10
             )
             if soak_res.get("copyright_blocked"):
                 return soak_res
@@ -738,13 +738,13 @@ class Publisher:
         video_id: str,
         access_token: str,
         title: str = "",
-        soak_seconds: int = 300,
-        poll_interval: int = 30
+        soak_seconds: int = 30,
+        poll_interval: int = 10
     ) -> Dict[str, Any]:
         """
         Ngâm kiểm tra bản quyền Facebook (Facebook Copyright Soak Check):
-        - Mặc định ngâm 5 phút (300 giây, có thể cấu hình qua FB_SOAK_SECONDS).
-        - Định kỳ mỗi 30s kiểm tra trạng thái video qua Graph API.
+        - Mặc định ngâm 30 giây (có thể cấu hình qua FB_SOAK_SECONDS).
+        - Định kỳ mỗi 10s kiểm tra trạng thái video qua Graph API.
         - NẾU PHÁT HIỆN BỊ CHẶN BẢN QUYỀN / TỪ CHỐI / LỖI TRUY CẬP:
           TỰ ĐỘNG GỌI DELETE https://graph.facebook.com/v20.0/{video_id} XÓA NGAY KHỎI FANPAGE.
           Bắn cảnh báo Telegram và trả về copyright_blocked=True.
@@ -871,7 +871,8 @@ class Publisher:
         cls,
         package_dir: Union[str, Path],
         custom_scheduler: Optional[VideoScheduler] = None,
-        force_publish: bool = False
+        force_publish: bool = False,
+        video_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Đăng tải gói video chuẩn Gói Xét Duyệt 3 phần:
@@ -962,7 +963,7 @@ class Publisher:
         tags = seo_data.get("tags") or []
 
         # Tên/ID phim
-        movie_id = pkg_dir.name
+        movie_id = video_id or seo_data.get("video_id") or seo_data.get("movie_id") or pkg_dir.name
 
         # Đọc Story Bible nếu có movie_id
         bible_file = pkg_dir / "story_bible.json"
@@ -970,7 +971,7 @@ class Publisher:
             try:
                 with open(bible_file, "r", encoding="utf-8") as f:
                     sb = json.load(f)
-                    if sb.get("movie_id"):
+                    if sb.get("movie_id") and not video_id:
                         movie_id = sb["movie_id"]
                     if sb.get("vietnamese_title") and not seo_data.get("title"):
                         title = sb["vietnamese_title"]
@@ -1197,5 +1198,6 @@ class Publisher:
         # Khi AUTO_PUBLISH bật -> Chạy qua Cổng QA Gate và publish
         return cls.publish_package(
             package_dir=pkg_d,
-            custom_scheduler=custom_scheduler
+            custom_scheduler=custom_scheduler,
+            video_id=video_id
         )
