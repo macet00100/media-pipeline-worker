@@ -113,10 +113,19 @@ def test_visual_slice_algorithm():
     total_dur = round(sum(c["duration"] for c in cuts), 2)
     assert abs(total_dur - t_audio) <= 0.05, f"Tổng thời lượng lát cắt {total_dur} != {t_audio}"
 
-    # 2. Không giữ góc quay quá 6-7s (chia lát cắt 3-6s)
+    # 2. Mỗi lát cắt nằm trong khoảng 2.0s - 2.8s (tối đa 3.0s), có xen kẽ zoom và tốc độ
     for c in cuts:
-        assert c["duration"] <= 6.5, f"Lát cắt quá dài: {c['duration']}s"
-        assert c["duration"] >= 2.5, f"Lát cắt quá ngắn: {c['duration']}s"
+        assert c["duration"] <= 3.0, f"Lát cắt quá dài: {c['duration']}s"
+        assert c["duration"] >= 1.9, f"Lát cắt quá ngắn: {c['duration']}s"
+        assert "speed" in c and 1.15 <= c["speed"] <= 1.25, f"Tốc độ lát cắt không hợp lệ: {c.get('speed')}"
+        assert "zoom" in c and c["zoom"] in (1.08, 1.18), f"Zoom lát cắt không hợp lệ: {c.get('zoom')}"
+
+    # 3. Non-contiguous Jump-Cut: Lát cắt kế tiếp trong cùng dải gốc phải nhảy cóc >= 4.0s
+    for i in range(len(cuts) - 1):
+        c_cur = cuts[i]
+        c_next = cuts[i + 1]
+        jump = c_next["start"] - c_cur["end"]
+        assert jump >= 4.0, f"Khoảng nhảy cóc giữa lát {i} và {i+1} quá ngắn: {jump}s (< 4.0s)"
 
 def test_dual_orientation_probe(tmp_path):
     # Test dò video dọc
@@ -153,7 +162,7 @@ def test_ass_subtitles_for_profiles(tmp_path):
     assert os.path.exists(ass_h)
     with open(ass_h, "r", encoding="utf-8") as f:
         content_h = f.read()
-    assert r"\pos(640,644)" in content_h
+    assert HORIZONTAL_PROFILE.sub_pos in content_h
     assert "PlayResX: 1280" in content_h
     assert "PlayResY: 720" in content_h
 
@@ -239,33 +248,53 @@ def test_cloud_storage_manager(tmp_path):
     try:
         CloudStorageManager.SIZE_THRESHOLD_BYTES = 50
         res_large = CloudStorageManager.handle_video_delivery(str(large_file), drama_slug="test_slug")
-        # Do không có rclone, hệ thống kích hoạt Fallback xuất thẳng output/
-        assert res_large["is_cloud"] is False
-        assert res_large["status"] == "fallback_local"
-        assert os.path.exists(res_large["output_path"])
-        assert "Fallback" in res_large["note"]
+        if res_large["is_cloud"]:
+            assert res_large["status"] == "cloud_uploaded"
+            assert "gdrive:" in res_large["remote_path"]
+        else:
+            assert res_large["status"] == "fallback_local"
+            assert os.path.exists(res_large["output_path"])
+            assert "Fallback" in res_large["note"]
     finally:
         CloudStorageManager.SIZE_THRESHOLD_BYTES = original_threshold
         shutil.rmtree(OUTPUT_DIR / "test_slug", ignore_errors=True)
+
+def test_copyright_shield_filter_and_inset():
+    from src.video.copyright_shield import CopyrightShield
+    # 1. Kiểm tra cut filter với speed và zoom
+    cut_f = CopyrightShield.get_cut_filter(720, 1280, frosted_glass_y=1100, frosted_glass_h=96, frosted_glass_w=720, zoom_ratio=1.18, speed_factor=1.22)
+    assert "hflip" in cut_f
+    assert "setpts=PTS/1.22" in cut_f
+    assert "scale=850:1510" in cut_f or "scale=850:1510" in cut_f.replace(" ", "")
+
+    # 2. Kiểm tra body filter với khung lồng 80% (576x1024 trên 720x1280) và viền kép tương phản cao
+    body_f = CopyrightShield.get_body_render_filter(720, 1280, safe_ass_path="sub.ass", safe_fonts_dir="fonts", inset_ratio=0.80)
+    assert "scale=576:1024" in body_f
+    assert "overlay=72:128" in body_f
+    assert "color=black@0.70:t=4" in body_f
+    assert "color=white@0.45:t=2" in body_f
+    assert "boxblur=32:4" in body_f
 
 if __name__ == "__main__":
     print("=" * 65)
     print("🚀 BẮT ĐẦU CHẠY TOÀN BỘ UNIT TESTS (HẠNG MỤC 3 & 4)")
     print("=" * 65)
-    print("[1/6] Kiểm thử StoryBible...")
+    print("[1/7] Kiểm thử StoryBible...")
     test_story_bible()
-    print("[2/6] Kiểm thử CompressionPlanner...")
+    print("[2/7] Kiểm thử CompressionPlanner...")
     test_compression_planner()
-    print("[3/6] Kiểm thử Visual Slice Algorithm...")
+    print("[3/7] Kiểm thử Visual Slice Algorithm...")
     test_visual_slice_algorithm()
+    print("[4/7] Kiểm thử CopyrightShield Filters & Inset...")
+    test_copyright_shield_filter_and_inset()
     with tempfile.TemporaryDirectory() as td:
         tmp_p = Path(td)
-        print("[4/6] Kiểm thử Dual Orientation Probe & ASS...")
+        print("[5/7] Kiểm thử Dual Orientation Probe & ASS...")
         test_dual_orientation_probe(tmp_p)
         test_ass_subtitles_for_profiles(tmp_p)
-        print("[5/6] Kiểm thử SeriesStitcher & Checkpoint...")
+        print("[6/7] Kiểm thử SeriesStitcher & Checkpoint...")
         test_series_stitcher_and_checkpoint(tmp_p)
-        print("[6/6] Kiểm thử CloudStorageManager...")
+        print("[7/7] Kiểm thử CloudStorageManager...")
         test_cloud_storage_manager(tmp_p)
     print("=" * 65)
     print("✅ TẤT CẢ UNIT TESTS HẠNG MỤC 3 & 4 ĐÃ VƯỢT QUA 100%!")

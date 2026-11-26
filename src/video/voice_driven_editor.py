@@ -329,14 +329,17 @@ class VoiceDrivenEditor:
         cls,
         t_audio: float,
         source_clip_ranges: List[Dict[str, float]],
-        min_cut_sec: float = 1.8,
-        max_cut_sec: float = 2.5
+        min_cut_sec: float = 2.0,
+        max_cut_sec: float = 2.8
     ) -> List[Dict[str, Any]]:
         """
-        Thuật toán Chia Lát Cắt Động (Dynamic Visual Slicing) - Chống Visual Content ID:
-        - Rút ngắn bắt buộc thời lượng mỗi lát cắt xuống 1.8s - 2.5s (tuyệt đối không quá 2.5s).
-        - Giữa 2 lát cắt liên tiếp nhảy cóc nhẹ +0.8s..+1.5s trong phim gốc để phá cấu trúc chuỗi tuyến tính.
-        - Luân phiên tỷ lệ zoom theo lát cắt: Lát lẻ phóng 1.06x, Lát chẵn phóng 1.15x.
+        Thuật toán Chia Lát Cắt Động (Dynamic Visual Slicing) - Chống Meta Rights Manager & Visual Content ID:
+        - Rút ngắn bắt buộc thời lượng mỗi lát cắt xuống 2.0s - 2.8s (tuyệt đối không quá 3.0s).
+        - Ngắt mạch thời gian thật (Non-contiguous Jump-Cut): Giữa 2 lát cắt liên tiếp trong cùng cảnh gốc
+          nhảy cóc tối thiểu +4.5s..+8.0s trong phim gốc để triệt tiêu hoàn toàn chuỗi khớp 13-30s.
+        - Luân phiên tỷ lệ zoom và tốc độ:
+          + Lát lẻ: Zoom 1.08x, Speed 1.16x
+          + Lát chẵn: Zoom 1.18x, Speed 1.22x
         """
         if t_audio <= 0:
             return []
@@ -352,7 +355,7 @@ class VoiceDrivenEditor:
         if not valid_ranges:
             valid_ranges = [{"start": 35.0, "end": 90.0, "len": 55.0}]
 
-        # 2. Tính toán danh sách thời lượng các lát cắt (1.8s - 2.5s)
+        # 2. Tính toán danh sách thời lượng các lát cắt (2.0s - 2.8s)
         if t_audio <= max_cut_sec:
             slice_durations = [round(t_audio, 2)]
         else:
@@ -360,6 +363,11 @@ class VoiceDrivenEditor:
             avg = t_audio / k
             while avg > max_cut_sec:
                 k += 1
+                avg = t_audio / k
+
+            # Đảm bảo avg không bị ép quá nhỏ nếu có thể giảm bớt k
+            if avg < min_cut_sec and k > 2 and (t_audio / (k - 1)) <= max_cut_sec:
+                k -= 1
                 avg = t_audio / k
 
             slice_durations = []
@@ -370,7 +378,7 @@ class VoiceDrivenEditor:
                 rem -= cur
             slice_durations.append(round(rem, 2))
 
-        # 3. Ánh xạ các lát cắt vào các dải an toàn của block kèm nhảy cóc và luân phiên zoom
+        # 3. Ánh xạ các lát cắt vào các dải an toàn của block kèm nhảy cóc và luân phiên zoom/tốc độ
         visual_cuts = []
         range_idx = 0
         range_offset = 0.0
@@ -381,11 +389,12 @@ class VoiceDrivenEditor:
             r_en = cur_r["end"]
             r_len = cur_r["len"]
 
-            # Luân phiên zoom: lẻ phóng 1.06x, chẵn phóng 1.15x
-            cut_zoom = 1.06 if (idx % 2 == 1) else 1.15
+            # Luân phiên zoom và tốc độ theo lát cắt
+            cut_zoom = 1.08 if (idx % 2 == 1) else 1.18
+            cut_speed = 1.16 if (idx % 2 == 1) else 1.22
 
-            # Nhảy cóc nhẹ +0.8s..+1.5s giữa các lát cắt liên tiếp
-            jump_sec = 1.2 if idx > 0 else 0.0
+            # Nhảy cóc thời gian thật +4.5s..+8.0s giữa các lát cắt liên tiếp trong cùng cảnh gốc
+            next_jump_sec = 4.5 + round(((idx + 1) * 1.7) % 3.5, 2)
 
             if r_len <= dur:
                 cut_start = r_st
@@ -395,7 +404,8 @@ class VoiceDrivenEditor:
                     "start": round(cut_start, 2),
                     "end": round(cut_end, 2),
                     "duration": actual_dur,
-                    "zoom": cut_zoom
+                    "zoom": cut_zoom,
+                    "speed": cut_speed
                 })
                 rem_dur = round(dur - actual_dur, 2)
                 range_idx += 1
@@ -409,9 +419,10 @@ class VoiceDrivenEditor:
                         "start": round(n_st, 2),
                         "end": round(sub_cut_end, 2),
                         "duration": round(sub_cut_end - n_st, 2),
-                        "zoom": cut_zoom
+                        "zoom": cut_zoom,
+                        "speed": cut_speed
                     })
-                    range_offset = rem_dur + 1.2
+                    range_offset = rem_dur + next_jump_sec
             else:
                 cut_start = r_st + range_offset
                 if cut_start + dur > r_en:
@@ -427,9 +438,10 @@ class VoiceDrivenEditor:
                     "start": round(cut_start, 2),
                     "end": round(cut_end, 2),
                     "duration": round(cut_end - cut_start, 2),
-                    "zoom": cut_zoom
+                    "zoom": cut_zoom,
+                    "speed": cut_speed
                 })
-                range_offset += dur + jump_sec
+                range_offset += dur + next_jump_sec
                 if range_offset + dur > cur_r["len"]:
                     range_idx += 1
                     range_offset = 0.0
@@ -750,16 +762,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             clip_out = str(tmp_path / f"cut_{c_idx}.mp4")
             c_start = cut["start"]
             c_dur = cut["duration"]
-            c_zoom = cut.get("zoom", 1.06 if (c_idx % 2 == 1) else 1.15)
+            c_zoom = cut.get("zoom", 1.08 if (c_idx % 2 == 1) else 1.18)
+            c_speed = cut.get("speed", 1.16 if (c_idx % 2 == 1) else 1.22)
 
-            # Lớp 1 (hflip + speed 1.08x) + Lớp 2 (kính mờ che sub Trung TRƯỚC zoom) + Zoom lát
+            # Lớp 1 (hflip + speed luân phiên) + Lớp 2 (kính mờ che sub Trung TRƯỚC zoom) + Zoom lát
             cut_filter = CopyrightShield.get_cut_filter(
                 width=profile.width,
                 height=profile.height,
                 frosted_glass_y=profile.frosted_glass_y,
                 frosted_glass_h=profile.frosted_glass_h,
                 frosted_glass_w=profile.frosted_glass_w,
-                zoom_ratio=c_zoom
+                zoom_ratio=c_zoom,
+                speed_factor=c_speed
             )
 
             cmd_cut = [
@@ -815,7 +829,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         safe_ass = Path(ass_sub_path).resolve().as_posix().replace(":", "\\:")
         safe_fonts = Path(fonts_dir).resolve().as_posix().replace(":", "\\:")
 
-        # FILTERGRAPH 4 LỚP: Nền mờ 28px + Khung 86% ở giữa + Viền sáng + Logo + Subtitle ASS
+        # FILTERGRAPH 4 LỚP: Nền mờ sâu + Khung lồng thật 80% ở giữa + Viền kép tương phản cao + Logo + Subtitle ASS
         v_filters = CopyrightShield.get_body_render_filter(
             width=profile.width,
             height=profile.height,
@@ -823,7 +837,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             safe_fonts_dir=safe_fonts,
             logo_size=profile.logo_size,
             logo_x=profile.logo_x,
-            logo_y=profile.logo_y
+            logo_y=profile.logo_y,
+            inset_ratio=0.80
         )
 
         # Hòa âm: Giọng đọc 150% + BGM 6% (nếu có)

@@ -148,7 +148,7 @@ jobs:
           PREFERRED_SOURCE: ${{ inputs.force_source || 'lz' }}
           http_proxy: "http://127.0.0.1:9080"
           https_proxy: "http://127.0.0.1:9080"
-          no_proxy: "localhost,127.0.0.1,googleapis.com,generativelanguage.googleapis.com,telegram.org,api.telegram.org,github.com"
+          no_proxy: "localhost,127.0.0.1,googleapis.com,generativelanguage.googleapis.com,telegram.org,api.telegram.org,github.com,facebook.com,graph.facebook.com,graph-video.facebook.com"
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEYS || secrets.GEMINI_API_KEY }}

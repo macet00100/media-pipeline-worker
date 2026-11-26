@@ -118,13 +118,77 @@ class TestPublisher(unittest.TestCase):
                 scheduled_publish_timestamp=1795527000,
                 thumbnail_path=str(h_thumb),
                 page_id="test_page_123",
-                access_token="test_token_xyz"
+                access_token="test_token_xyz",
+                soak_seconds=0
             )
 
             self.assertTrue(res["success"])
             self.assertTrue(res["is_vertical"])
             self.assertEqual(Path(res["thumbnail_path"]).name, "thumbnail.jpg")
             self.assertEqual(res["thumbnail_dimensions"], "720x1280")
+
+    def test_facebook_soak_check_detects_copyright_and_deletes_video(self):
+        """Kiểm tra Facebook Soak Check: Khi phát hiện vi phạm bản quyền -> Tự động gọi DELETE gỡ video ngay lập tức."""
+        mock_get = MagicMock()
+        mock_get.return_value.json.return_value = {
+            "status": {
+                "video_status": "copyright_violating",
+                "processing_phase": {"status": "error"}
+            }
+        }
+
+        mock_del = MagicMock()
+        mock_del.return_value.json.return_value = {"success": True}
+
+        with patch("requests.get", mock_get), \
+             patch("requests.delete", mock_del), \
+             patch.object(Publisher, "send_telegram_alert"):
+
+            res = Publisher.soak_and_verify_facebook_copyright(
+                video_id="fb_bad_vid_999",
+                access_token="fake_token",
+                title="Phim Vi Pham Ban Quyen",
+                soak_seconds=2,
+                poll_interval=1
+            )
+
+            self.assertTrue(res["copyright_blocked"])
+            self.assertFalse(res["success"])
+            self.assertEqual(res["video_id"], "fb_bad_vid_999")
+            self.assertIn("vi phạm", res["reason"].lower())
+
+            # Bắt buộc đã gọi DELETE lên đúng endpoint video
+            mock_del.assert_called_once()
+            called_url = mock_del.call_args[0][0]
+            self.assertIn("fb_bad_vid_999", called_url)
+
+    def test_facebook_soak_check_passes_when_healthy(self):
+        """Kiểm tra Facebook Soak Check: Khi video an toàn sạch sẽ -> Kết quả thành công và không xóa."""
+        mock_get = MagicMock()
+        mock_get.return_value.json.return_value = {
+            "status": {
+                "video_status": "ready",
+                "processing_phase": {"status": "complete"},
+                "publishing_phase": {"status": "complete", "publish_status": "published"}
+            }
+        }
+
+        mock_del = MagicMock()
+
+        with patch("requests.get", mock_get), \
+             patch("requests.delete", mock_del):
+
+            res = Publisher.soak_and_verify_facebook_copyright(
+                video_id="fb_good_vid_111",
+                access_token="fake_token",
+                title="Phim Sach Ban Quyen",
+                soak_seconds=2,
+                poll_interval=1
+            )
+
+            self.assertFalse(res["copyright_blocked"])
+            self.assertTrue(res["success"])
+            mock_del.assert_not_called()
 
     def test_youtube_copyright_blocked_skips_facebook(self):
         """Khóa liên hoàn: Khi YouTube bị chặn Content ID -> Tự hủy và bỏ qua Facebook hoàn toàn."""

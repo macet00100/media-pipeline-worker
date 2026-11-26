@@ -394,6 +394,14 @@ class SeriesStitcher:
 
         print(f"[SeriesStitcher] Đã xuất file phụ đề trọn bộ gộp ({len(final_dialogue_lines)} dòng): {output_master_ass}")
         return True
+
+    @classmethod
+    def stitch_series_copy(
+        cls,
+        series_id: str,
+        output_dir: Path,
+        custom_slug: Optional[str] = None
+    ) -> List[str]:
         """
         Ghép nối các batch cực nhanh bằng FFmpeg `-c copy` không encode lại.
         - Nếu tổng thời lượng <= 3.5 giờ (12600s): Xuất 1 file duy nhất full_series.mp4.

@@ -449,7 +449,8 @@ class Publisher:
         scheduled_publish_timestamp: int,
         thumbnail_path: Optional[str] = None,
         page_id: Optional[str] = None,
-        access_token: Optional[str] = None
+        access_token: Optional[str] = None,
+        soak_seconds: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Upload video lên Facebook Page qua Graph API v20.0 dùng 3-phase Resumable Upload
@@ -656,8 +657,22 @@ class Publisher:
             except Exception as te:
                 print(f"[Facebook Upload] ⚠️ Cảnh báo thumbnail Facebook: {te}")
 
+        # PHA NGÂM KIỂM TRA BẢN QUYỀN (SOAK CHECK 5 PHÚT)
+        soak_sec = soak_seconds if soak_seconds is not None else int(os.getenv("FB_SOAK_SECONDS", "300"))
+        if soak_sec > 0:
+            soak_res = cls.soak_and_verify_facebook_copyright(
+                video_id=final_video_id,
+                access_token=token,
+                title=clean_title,
+                soak_seconds=soak_sec,
+                poll_interval=30
+            )
+            if soak_res.get("copyright_blocked"):
+                return soak_res
+
         return {
             "success": True,
+            "copyright_blocked": False,
             "platform": "facebook",
             "video_id": final_video_id,
             "video_url": f"https://www.facebook.com/watch/?v={final_video_id}",
@@ -667,6 +682,142 @@ class Publisher:
             "thumbnail_dimensions": thumb_dims,
             "is_vertical": is_vertical,
             "title": clean_title
+        }
+
+    @classmethod
+    def verify_facebook_video_health(
+        cls,
+        video_id: str,
+        access_token: str
+    ) -> Tuple[bool, str]:
+        """
+        Kiểm tra độ an toàn của video trên Facebook:
+        - Truy vấn Graph API v20.0 /{video_id}?fields=status,privacy,title
+        - Phát hiện:
+          + Lỗi bản quyền hoặc từ chối: status.video_status in ("error", "rejected", "copyright_violating", "blocked")
+          + Lỗi xử lý: status.processing_phase.status == "error"
+          + Lỗi công bố: status.publishing_phase.publish_status in ("failed", "rejected", "blocked")
+          + Quyền xem bị giới hạn / bị gỡ: privacy rỗng/chặn hoặc Graph API trả về error
+        Trả về: (is_healthy: bool, reason: str)
+        """
+        import requests
+        try:
+            url = f"https://graph.facebook.com/v20.0/{video_id}?fields=status,privacy,title&access_token={access_token}"
+            res = requests.get(url, timeout=30)
+            data = res.json()
+
+            if "error" in data:
+                err = data["error"]
+                msg = err.get("message", "")
+                code = err.get("code")
+                if code in (100, 200, 10):
+                    return False, f"Facebook API báo lỗi truy cập video (có thể đã bị gỡ hoặc hạn chế): {msg}"
+                return False, f"Facebook API Error ({code}): {msg}"
+
+            status_obj = data.get("status", {})
+            v_status = str(status_obj.get("video_status", "")).lower()
+            proc_status = str(status_obj.get("processing_phase", {}).get("status", "")).lower()
+            pub_status = str(status_obj.get("publishing_phase", {}).get("publish_status", "")).lower()
+
+            if v_status in ("error", "rejected", "copyright_violating", "blocked"):
+                return False, f"Facebook video_status vi phạm/chặn: '{v_status}'"
+
+            if proc_status == "error":
+                return False, f"Facebook processing_phase gặp lỗi (error)"
+
+            if pub_status in ("failed", "rejected", "blocked"):
+                return False, f"Facebook publish_status bị chặn: '{pub_status}'"
+
+            return True, "OK"
+        except Exception as e:
+            return False, f"Ngoại lệ khi kiểm tra Facebook video health: {e}"
+
+    @classmethod
+    def soak_and_verify_facebook_copyright(
+        cls,
+        video_id: str,
+        access_token: str,
+        title: str = "",
+        soak_seconds: int = 300,
+        poll_interval: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Ngâm kiểm tra bản quyền Facebook (Facebook Copyright Soak Check):
+        - Mặc định ngâm 5 phút (300 giây, có thể cấu hình qua FB_SOAK_SECONDS).
+        - Định kỳ mỗi 30s kiểm tra trạng thái video qua Graph API.
+        - NẾU PHÁT HIỆN BỊ CHẶN BẢN QUYỀN / TỪ CHỐI / LỖI TRUY CẬP:
+          TỰ ĐỘNG GỌI DELETE https://graph.facebook.com/v20.0/{video_id} XÓA NGAY KHỎI FANPAGE.
+          Bắn cảnh báo Telegram và trả về copyright_blocked=True.
+        """
+        import time
+        import requests
+
+        if soak_seconds <= 0:
+            print(f"[Facebook Audit] FB_SOAK_SECONDS <= 0, bỏ qua ngâm kiểm tra.")
+            return {"success": True, "copyright_blocked": False, "video_id": video_id}
+
+        print("=" * 70)
+        print(f"[Facebook Audit] 🛡️ Bắt đầu Ngâm Kiểm Tra Bản Quyền Facebook {soak_seconds}s ({soak_seconds//60} phút)...")
+        print(f"   - Video ID: {video_id}")
+        print(f"   - Tiêu đề: {title[:60]}")
+        print("=" * 70)
+
+        elapsed = 0
+        is_blocked = False
+        block_reason = ""
+
+        while elapsed < soak_seconds:
+            wait_step = min(poll_interval, soak_seconds - elapsed)
+            time.sleep(wait_step)
+            elapsed += wait_step
+
+            healthy, reason = cls.verify_facebook_video_health(video_id, access_token)
+            print(f"[Facebook Audit] ({elapsed}s/{soak_seconds}s) Health check: {'PASS' if healthy else 'FAIL'} - {reason}")
+
+            if not healthy:
+                r_lower = reason.lower()
+                if any(k in r_lower for k in ("vi phạm", "bị chặn", "chặn", "copyright", "rejected", "error", "blocked")):
+                    is_blocked = True
+                    block_reason = reason
+                    break
+
+        if is_blocked:
+            print("=" * 70)
+            print(f"[Facebook Audit] ❌ PHÁT HIỆN BẢN QUYỀN / VI PHẠM FACEBOOK: {block_reason}")
+            print(f"[Facebook Audit] 🧹 Đang tự động GỠ BỎ video {video_id} khỏi Fanpage ngay lập tức...")
+            print("=" * 70)
+            try:
+                del_res = requests.delete(
+                    f"https://graph.facebook.com/v20.0/{video_id}",
+                    params={"access_token": access_token},
+                    timeout=30
+                )
+                del_json = del_res.json()
+                print(f"[Facebook Audit] Kết quả xóa video khỏi Fanpage: {del_json}")
+            except Exception as del_err:
+                print(f"[Facebook Audit] ⚠️ Lỗi khi gọi DELETE video {video_id}: {del_err}")
+
+            cls.send_telegram_alert(
+                f"🚨 *[Cool Mèo Phim] CẢNH BÁO BẢN QUYỀN FACEBOOK*\n\n"
+                f"🎬 *Video:* {title}\n"
+                f"❌ *Lý do:* {block_reason}\n"
+                f"🧹 *Hành động:* Hệ thống đã tự động GỠ BỎ video khỏi Fanpage để bảo vệ kênh."
+            )
+
+            return {
+                "success": False,
+                "copyright_blocked": True,
+                "video_id": video_id,
+                "reason": block_reason,
+                "platform": "facebook"
+            }
+
+        print(f"[Facebook Audit] ✅ Video đã ngâm đủ {soak_seconds}s ({soak_seconds//60} phút) trên Facebook và SẠCH BẢN QUYỀN 100%!")
+        return {
+            "success": True,
+            "copyright_blocked": False,
+            "video_id": video_id,
+            "platform": "facebook"
         }
 
     @classmethod
@@ -960,11 +1111,19 @@ class Publisher:
                         "error": str(fb_err),
                         "platform": "facebook"
                     }
+
+                # NẾU FACEBOOK BỊ CHẶN BẢN QUYỀN
+                if fb_result.get("copyright_blocked"):
+                    print(f"[Publisher] ⚠️ Video [{title}] bị chặn bản quyền Facebook. Đã tự động gỡ video khỏi Fanpage.")
+                    StateManager.mark_failed(movie_id, fb_result.get("reason", "copyright_blocked_facebook"), title)
         else:
             print("[Facebook Upload] AUTO_PUBLISH_FACEBOOK=false: Bỏ qua upload Facebook.")
             fb_result = {"success": False, "skipped": True, "platform": "facebook"}
 
-        overall_success = yt_result.get("success", False) or fb_result.get("success", False)
+        yt_ok = (not auto_yt) or (yt_result.get("success", False) and not yt_result.get("copyright_blocked", False))
+        fb_ok = (not auto_fb) or (fb_result.get("success", False) and not fb_result.get("copyright_blocked", False))
+        has_at_least_one = (auto_yt and yt_result.get("success", False)) or (auto_fb and fb_result.get("success", False))
+        overall_success = yt_ok and fb_ok and has_at_least_one
 
         # 5. GHI KẾT QUẢ VÀO publish_result.json VÀ CẬP NHẬT STATE
         result_payload = {
