@@ -20,6 +20,13 @@ class TestPublisher(unittest.TestCase):
         self.package_dir = Path(self.temp_dir.name) / "test_package"
         self.package_dir.mkdir(parents=True, exist_ok=True)
 
+        self.db_path = Path(self.temp_dir.name) / "processed_db.json"
+        self.queue_path = Path(self.temp_dir.name) / "production_queue.json"
+        self.patch_db = patch("src.state.state_manager.DB_FILE", self.db_path)
+        self.patch_queue = patch("src.state.state_manager.QUEUE_FILE", self.queue_path)
+        self.patch_db.start()
+        self.patch_queue.start()
+
         self.calendar_path = Path(self.temp_dir.name) / "schedule_calendar.json"
         self.scheduler = VideoScheduler(
             calendar_path=self.calendar_path,
@@ -28,6 +35,8 @@ class TestPublisher(unittest.TestCase):
         )
 
     def tearDown(self):
+        self.patch_db.stop()
+        self.patch_queue.stop()
         self.temp_dir.cleanup()
 
     def test_sanitize_youtube_metadata(self):

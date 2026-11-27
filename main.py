@@ -17,6 +17,7 @@ from src.sources.cms_client import CMSClient
 from src.sources.downloader import Downloader
 from src.sources.movie_curator import MovieCurator
 from src.cleaner.ad_detector import AdDetector
+from src.intelligence.gemini_client import GeminiClient, GeminiAuthError
 from src.intelligence.story_bible import StoryBible
 from src.intelligence.script_extractor import ScriptExtractor
 from src.intelligence.review_writer import ReviewWriter
@@ -28,8 +29,40 @@ from src.video.series_stitcher import SeriesStitcher
 from src.video.thumbnail_maker import ThumbnailMaker
 from src.delivery.scheduler import scheduler, VideoScheduler
 from src.delivery.publisher_stub import PublisherStub
+from src.delivery.publisher import Publisher
 from src.delivery.package_exporter import PackageExporter
 from src.qa.validator import QualityValidator
+
+def preflight_check_gemini_or_exit() -> str:
+    """
+    Fail-Fast: Kiểm tra nhẹ kết nối Gemini API Key ngay khi khởi động main.py
+    (TRƯỚC khi gọi Curator hay tải bất kỳ mảnh .ts nào).
+    Nếu toàn bộ API key đều trả về 401/403/API key not valid -> Bắn cảnh báo Telegram
+    và thoát ngay, TUYỆT ĐỐI KHÔNG đánh dấu failed bất kỳ phim nào trong hàng chờ.
+    """
+    print("[MAIN] 🔑 Kiểm tra Gemini API Key (Fail-Fast Preflight)...")
+    try:
+        _, active_model = GeminiClient.verify_api_key_preflight()
+        print(f"[MAIN] ✅ Gemini API Key hợp lệ (Model sẵn sàng: {active_model}).")
+        return active_model
+    except GeminiAuthError as auth_err:
+        msg = (
+            "🚨 *[Cool Mèo Phim] LỖI NGHIÊM TRỌNG GEMINI API KEY*\n\n"
+            "Toàn bộ Gemini API Keys bị từ chối xác thực (`401`/`403`/Invalid Key) ngay lúc khởi động.\n"
+            "Pipeline đã **DỪNG KHẨN CẤP** để bảo toàn hàng chờ (0 phim bị đánh dấu `failed`).\n\n"
+            f"Chi tiết: `{str(auth_err)[:300]}`"
+        )
+        print(f"[MAIN] 🚨 {auth_err}")
+        print("[MAIN] 🛡️ Dừng pipeline ngay lập tức (Fail-Fast). Hàng chờ được bảo toàn nguyên vẹn!")
+        Publisher.send_telegram_alert(msg)
+        sys.exit(1)
+    except Exception as e:
+        if GeminiClient.is_gemini_auth_exception(e):
+            print(f"[MAIN] 🚨 Lỗi xác thực Gemini API: {e}")
+            Publisher.send_telegram_alert(f"🚨 *[Cool Mèo Phim] LỖI GEMINI API KEY*: `{str(e)[:300]}`")
+            sys.exit(1)
+        print(f"[MAIN] ⚠️ Cảnh báo tạm thời khi kiểm tra Gemini preflight ({e}) -> Tiếp tục thử chạy pipeline.")
+        return ""
 
 def slugify(text: str) -> str:
     """Tạo slug an toàn cho thư mục và tên file."""
@@ -638,7 +671,15 @@ def process_drama_voice_driven(
             "script_sample": combined_blocks[:3]
         }
 
+    except GeminiAuthError as auth_err:
+        print(f"[PIPELINE INFRA ERROR] Dừng khẩn cấp do lỗi xác thực Gemini API Key khi đang xử lý [{movie_title}]: {auth_err}")
+        print(f"[STATE] 🛡️ Bảo toàn [{movie_id}]: KHÔNG đưa vào failed_ids.")
+        raise
+
     except Exception as e:
+        if GeminiClient.is_gemini_auth_exception(e):
+            print(f"[PIPELINE INFRA ERROR] Phát hiện lỗi hạ tầng/API Key Gemini ({e}) -> Dừng pipeline, KHÔNG đánh dấu failed [{movie_id}].")
+            raise GeminiAuthError(str(e)) from e
         print(f"[PIPELINE ERROR] Thất bại khi sản xuất [{movie_title}]: {e}")
         import traceback
         traceback.print_exc()
@@ -667,6 +708,7 @@ def main():
     print("=" * 70)
 
     verify_assets_ready()
+    preflight_check_gemini_or_exit()
 
     if args.curate_only:
         print("[MAIN] Thực thi chế độ Curate-Only...")
@@ -789,7 +831,18 @@ def main():
             continue
 
         print(f"\n[MAIN] >>> Bắt đầu sản xuất ứng viên: {cand['title']} ({cand['id']}) <<<")
-        res = process_drama_voice_driven(cand, max_episodes=args.max_episodes)
+        try:
+            res = process_drama_voice_driven(cand, max_episodes=args.max_episodes)
+        except GeminiAuthError as auth_err:
+            alert_msg = (
+                "🚨 *[Cool Mèo Phim] DỪNG PIPELINE DO LỖI GEMINI API KEY*\n\n"
+                f"Phim `{cand['title']}` (`{cand['id']}`) được giữ nguyên trạng thái `queued` (không đánh dấu `failed`).\n"
+                f"Chi tiết: `{str(auth_err)[:300]}`"
+            )
+            print(f"[MAIN] 🚨 {auth_err}")
+            print(f"[MAIN] 🛡️ Dừng ngay vòng lặp sản xuất để bảo vệ hàng chờ!")
+            Publisher.send_telegram_alert(alert_msg)
+            sys.exit(1)
         if res:
             successful_runs.append(res)
             print("\n" + "=" * 70)

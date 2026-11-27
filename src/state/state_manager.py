@@ -232,7 +232,7 @@ class StateManager:
             res = subprocess.run(["git", "diff", "--cached", "--quiet"], check=False)
             if res.returncode != 0:
                 subprocess.run(["git", "commit", "-m", commit_msg], check=False)
-                subprocess.run(["git", "pull", "--rebase"], check=False)
+                subprocess.run(["git", "pull", "--rebase", "origin", "main"], check=False)
                 subprocess.run(["git", "push"], check=False)
                 print("[STATE] Đã đồng bộ processed_db.json, production_queue.json & schedule_calendar.json lên GitHub.")
         except Exception as e:

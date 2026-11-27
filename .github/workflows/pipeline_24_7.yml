@@ -298,8 +298,13 @@ jobs:
         run: |
           git config --global user.name "CoolMeoBot"
           git config --global user.email "bot@coolmeophim.local"
-          git pull --rebase origin main || true
-          python -c "from src.state.state_manager import StateManager; StateManager.sync_to_git('chore(state): auto update state files [skip ci]')" || true
+          git add state/
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(state): auto update state files [skip ci]"
+            git pull --rebase origin main
+            git push
+          fi
+          echo "✅ Đã đồng bộ processed_db.json, production_queue.json & schedule_calendar.json lên GitHub."
 
       - name: 🧹 Dọn dẹp tuyệt đối thư mục tạm và output (Zero Data Leak trên Public Runner)
         if: always()

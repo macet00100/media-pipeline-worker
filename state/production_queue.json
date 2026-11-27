@@ -1,6 +1,36 @@
 {
   "queue": [
     {
+      "id": "lz_168026",
+      "vod_id": "168026",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "刚子裁缝铺",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "total_episodes": 1,
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15578_d789c280/index.m3u8"
+      ],
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/77814e06115a70ee6e7d9f548650983a.jpg",
+      "synopsis": "",
+      "director": "",
+      "actors": "",
+      "status": "queued",
+      "score": 75,
+      "score_breakdown": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "queued_at": "2026-11-26T19:19:04.919118"
+    },
+    {
       "id": "lz_168031",
       "vod_id": "168031",
       "source_id": "lz",
@@ -18,7 +48,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "failed",
+      "status": "queued",
       "score": 75,
       "score_breakdown": {
         "hook_score": 22,
@@ -29,6 +59,200 @@
         "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
       },
       "queued_at": "2026-11-26T19:19:04.919118"
+    },
+    {
+      "id": "lz_168025",
+      "vod_id": "168025",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "灵气种田：我家生鲜全网抢断货第二季",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/951a5a6401378e22c41ab78fddba3ad0.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15576_57082fef/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-27T04:09:15.862245"
+    },
+    {
+      "id": "lz_168024",
+      "vod_id": "168024",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "长公主逼我入赘，我成了摄政王",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/64a81087cde8bff0e703489e9f0714db.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15577_3a6f58e0/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-27T04:09:15.862245"
+    },
+    {
+      "id": "lz_168023",
+      "vod_id": "168023",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "此爱难两清",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/2287cfcf417dff088863af6552405c54.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15573_952cf25b/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-27T07:12:04.772724"
+    },
+    {
+      "id": "lz_168022",
+      "vod_id": "168022",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "冒牌天师",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/445d623ae3fad27d2db98e2f126e97ed.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15574_fb9f25cc/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-27T07:12:04.772724"
+    },
+    {
+      "id": "ff_100473",
+      "vod_id": "100473",
+      "source_id": "ff",
+      "source_name": "Phi Phàm (FFZY)",
+      "title": "这里是火星",
+      "category": "long_series",
+      "episodes_count": 14,
+      "total_episodes": 14,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 76,
+      "curation_details": {
+        "hook_score": 25,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 15,
+        "total_score": 76,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [真相], độ trọn vẹn 14 tập (Đã Full), nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://pic.feifeixiang.com/upload/vod/20261120-1/a2c447400760463bcc9060c8c50f7824.jpg",
+      "m3u8_groups": [
+        "https://super.ffzy-online6.com/20261120/46085_c3661532/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46086_83d5aac4/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46087_67eed99b/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46088_7ee9f617/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46089_ff8d9fee/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46090_08a3025f/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46091_8a0d997c/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46092_0bcf6836/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46093_b9c9d8a1/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46094_91aa9457/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46095_df0d340e/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46096_8120c3da/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46097_cd24c3ca/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46098_59ff461e/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-27T04:09:15.862245"
+    },
+    {
+      "id": "ff_100582",
+      "vod_id": "100582",
+      "source_id": "ff",
+      "source_name": "Phi Phàm (FFZY)",
+      "title": "神手皇子",
+      "category": "long_series",
+      "episodes_count": 20,
+      "total_episodes": 20,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 79,
+      "curation_details": {
+        "hook_score": 28,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 15,
+        "total_score": 79,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [杀害, 真相], độ trọn vẹn 20 tập (Đã Full), nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://pic.feifeixiang.com/upload/vod/20261127-1/f64aa2eda964c5bcb44537045368aeed.jpg",
+      "m3u8_groups": [
+        "https://super.ffzy-online6.com/20261127/46638_c5c8f541/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46639_44b0e2d8/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46640_456c82b2/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46641_283d428f/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46642_439e5d78/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46643_6dcca2f7/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46644_bb7272ea/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46645_baf4c554/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46646_83dc5dd3/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46647_5bb0b4dd/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46648_00673020/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46649_ee3b82c0/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46650_46a9b6b8/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46651_0a27d42a/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46652_a46f93fa/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46653_45050a29/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46654_70607e3a/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46655_b5c4def0/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46656_2f3a4742/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46657_ead6ffd8/index.m3u8"
+      ],
+      "status": "queued",
+      "queued_at": "2026-11-27T07:12:04.772724"
     },
     {
       "id": "lz_168030",
@@ -121,36 +345,6 @@
       "queued_at": "2026-11-26T19:19:04.919118"
     },
     {
-      "id": "lz_168026",
-      "vod_id": "168026",
-      "source_id": "lz",
-      "source_name": "Lượng Tử (Quantum)",
-      "title": "刚子裁缝铺",
-      "category": "short_drama",
-      "episodes_count": 1,
-      "is_completed": true,
-      "completion_verified": true,
-      "total_episodes": 1,
-      "m3u8_groups": [
-        "https://lzv34.com/20261123/15578_d789c280/index.m3u8"
-      ],
-      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/77814e06115a70ee6e7d9f548650983a.jpg",
-      "synopsis": "",
-      "director": "",
-      "actors": "",
-      "status": "failed",
-      "score": 75,
-      "score_breakdown": {
-        "hook_score": 22,
-        "viral_score": 16,
-        "completeness_score": 20,
-        "copyright_score": 14,
-        "total_score": 75,
-        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
-      },
-      "queued_at": "2026-11-26T19:19:04.919118"
-    },
-    {
       "id": "lz_168038",
       "vod_id": "168038",
       "source_id": "lz",
@@ -178,202 +372,8 @@
         "total_score": 75,
         "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
       }
-    },
-    {
-      "id": "lz_168025",
-      "vod_id": "168025",
-      "source_id": "lz",
-      "source_name": "Lượng Tử (Quantum)",
-      "title": "灵气种田：我家生鲜全网抢断货第二季",
-      "category": "short_drama",
-      "episodes_count": 1,
-      "total_episodes": 1,
-      "is_completed": true,
-      "completion_verified": true,
-      "score": 75,
-      "curation_details": {
-        "hook_score": 22,
-        "viral_score": 16,
-        "completeness_score": 20,
-        "copyright_score": 14,
-        "total_score": 75,
-        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
-      },
-      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/951a5a6401378e22c41ab78fddba3ad0.jpg",
-      "m3u8_groups": [
-        "https://lzv34.com/20261123/15576_57082fef/index.m3u8"
-      ],
-      "status": "failed",
-      "queued_at": "2026-11-27T04:09:15.862245"
-    },
-    {
-      "id": "lz_168024",
-      "vod_id": "168024",
-      "source_id": "lz",
-      "source_name": "Lượng Tử (Quantum)",
-      "title": "长公主逼我入赘，我成了摄政王",
-      "category": "short_drama",
-      "episodes_count": 1,
-      "total_episodes": 1,
-      "is_completed": true,
-      "completion_verified": true,
-      "score": 75,
-      "curation_details": {
-        "hook_score": 22,
-        "viral_score": 16,
-        "completeness_score": 20,
-        "copyright_score": 14,
-        "total_score": 75,
-        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
-      },
-      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/64a81087cde8bff0e703489e9f0714db.jpg",
-      "m3u8_groups": [
-        "https://lzv34.com/20261123/15577_3a6f58e0/index.m3u8"
-      ],
-      "status": "failed",
-      "queued_at": "2026-11-27T04:09:15.862245"
-    },
-    {
-      "id": "ff_100473",
-      "vod_id": "100473",
-      "source_id": "ff",
-      "source_name": "Phi Phàm (FFZY)",
-      "title": "这里是火星",
-      "category": "long_series",
-      "episodes_count": 14,
-      "total_episodes": 14,
-      "is_completed": true,
-      "completion_verified": true,
-      "score": 76,
-      "curation_details": {
-        "hook_score": 25,
-        "viral_score": 16,
-        "completeness_score": 20,
-        "copyright_score": 15,
-        "total_score": 76,
-        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [真相], độ trọn vẹn 14 tập (Đã Full), nguyên bản và an toàn bản quyền."
-      },
-      "poster_url": "https://pic.feifeixiang.com/upload/vod/20261120-1/a2c447400760463bcc9060c8c50f7824.jpg",
-      "m3u8_groups": [
-        "https://super.ffzy-online6.com/20261120/46085_c3661532/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46086_83d5aac4/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46087_67eed99b/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46088_7ee9f617/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46089_ff8d9fee/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46090_08a3025f/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46091_8a0d997c/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46092_0bcf6836/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46093_b9c9d8a1/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46094_91aa9457/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46095_df0d340e/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46096_8120c3da/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46097_cd24c3ca/index.m3u8",
-        "https://super.ffzy-online6.com/20261120/46098_59ff461e/index.m3u8"
-      ],
-      "status": "failed",
-      "queued_at": "2026-11-27T04:09:15.862245"
-    },
-    {
-      "id": "lz_168023",
-      "vod_id": "168023",
-      "source_id": "lz",
-      "source_name": "Lượng Tử (Quantum)",
-      "title": "此爱难两清",
-      "category": "short_drama",
-      "episodes_count": 1,
-      "total_episodes": 1,
-      "is_completed": true,
-      "completion_verified": true,
-      "score": 75,
-      "curation_details": {
-        "hook_score": 22,
-        "viral_score": 16,
-        "completeness_score": 20,
-        "copyright_score": 14,
-        "total_score": 75,
-        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
-      },
-      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/2287cfcf417dff088863af6552405c54.jpg",
-      "m3u8_groups": [
-        "https://lzv34.com/20261123/15573_952cf25b/index.m3u8"
-      ],
-      "status": "failed",
-      "queued_at": "2026-11-27T07:12:04.772724"
-    },
-    {
-      "id": "lz_168022",
-      "vod_id": "168022",
-      "source_id": "lz",
-      "source_name": "Lượng Tử (Quantum)",
-      "title": "冒牌天师",
-      "category": "short_drama",
-      "episodes_count": 1,
-      "total_episodes": 1,
-      "is_completed": true,
-      "completion_verified": true,
-      "score": 75,
-      "curation_details": {
-        "hook_score": 22,
-        "viral_score": 16,
-        "completeness_score": 20,
-        "copyright_score": 14,
-        "total_score": 75,
-        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
-      },
-      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/445d623ae3fad27d2db98e2f126e97ed.jpg",
-      "m3u8_groups": [
-        "https://lzv34.com/20261123/15574_fb9f25cc/index.m3u8"
-      ],
-      "status": "failed",
-      "queued_at": "2026-11-27T07:12:04.772724"
-    },
-    {
-      "id": "ff_100582",
-      "vod_id": "100582",
-      "source_id": "ff",
-      "source_name": "Phi Phàm (FFZY)",
-      "title": "神手皇子",
-      "category": "long_series",
-      "episodes_count": 20,
-      "total_episodes": 20,
-      "is_completed": true,
-      "completion_verified": true,
-      "score": 79,
-      "curation_details": {
-        "hook_score": 28,
-        "viral_score": 16,
-        "completeness_score": 20,
-        "copyright_score": 15,
-        "total_score": 79,
-        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [杀害, 真相], độ trọn vẹn 20 tập (Đã Full), nguyên bản và an toàn bản quyền."
-      },
-      "poster_url": "https://pic.feifeixiang.com/upload/vod/20261127-1/f64aa2eda964c5bcb44537045368aeed.jpg",
-      "m3u8_groups": [
-        "https://super.ffzy-online6.com/20261127/46638_c5c8f541/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46639_44b0e2d8/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46640_456c82b2/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46641_283d428f/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46642_439e5d78/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46643_6dcca2f7/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46644_bb7272ea/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46645_baf4c554/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46646_83dc5dd3/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46647_5bb0b4dd/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46648_00673020/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46649_ee3b82c0/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46650_46a9b6b8/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46651_0a27d42a/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46652_a46f93fa/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46653_45050a29/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46654_70607e3a/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46655_b5c4def0/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46656_2f3a4742/index.m3u8",
-        "https://super.ffzy-online6.com/20261127/46657_ead6ffd8/index.m3u8"
-      ],
-      "status": "failed",
-      "queued_at": "2026-11-27T07:12:04.772724"
     }
   ],
   "total_items": 12,
-  "last_updated": "2026-11-27T07:41:19.588156"
+  "last_updated": "2026-11-27T14:51:23.407813"
 }

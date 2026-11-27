@@ -156,16 +156,6 @@
       "reason": "Chặn vùng lãnh thổ do bản quyền YouTube Content ID (số quốc gia bị chặn: 249, chặn tại VN: True)",
       "failed_at": "2026-11-26T04:48:51.389983"
     },
-    "test_package": {
-      "title": "test_package",
-      "reason": "blocked_worldwide_by_kuaikan",
-      "failed_at": "2026-11-26T19:20:34.111501"
-    },
-    "lz_168031": {
-      "title": "这个侯爷不正经",
-      "reason": "Tải tập #1 thất bại từ: https://lzv34.com/20261123/15582_1417595a/index.m3u8",
-      "failed_at": "2026-11-26T22:22:33.635179"
-    },
     "lz_168030": {
       "title": "骑楼下的胶己人",
       "reason": "Tải tập #1 thất bại từ: https://lzv34.com/20261123/15583_0e72a039/index.m3u8",
@@ -180,41 +170,6 @@
       "title": "消失的成绩",
       "reason": "Pre-flight failed: http_status_404_at_ep_1",
       "failed_at": "2026-11-26T22:43:14.208986"
-    },
-    "lz_168026": {
-      "title": "刚子裁缝铺",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
-      "failed_at": "2026-11-26T22:54:07.287000"
-    },
-    "lz_168025": {
-      "title": "灵气种田：我家生鲜全网抢断货第二季",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'service': 'generativelanguage.googleapis.com', 'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent'}}]}}",
-      "failed_at": "2026-11-27T04:29:23.823931"
-    },
-    "lz_168024": {
-      "title": "长公主逼我入赘，我成了摄政王",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
-      "failed_at": "2026-11-27T04:47:27.180917"
-    },
-    "ff_100473": {
-      "title": "这里是火星",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
-      "failed_at": "2026-11-27T04:50:20.483555"
-    },
-    "lz_168023": {
-      "title": "此爱难两清",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
-      "failed_at": "2026-11-27T07:25:28.838374"
-    },
-    "lz_168022": {
-      "title": "冒牌天师",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
-      "failed_at": "2026-11-27T07:39:05.622055"
-    },
-    "ff_100582": {
-      "title": "神手皇子",
-      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
-      "failed_at": "2026-11-27T07:41:19.587171"
     }
   },
   "pending_review": {
@@ -284,17 +239,12 @@
       "completed_at": "2026-11-25T11:36:34.679007"
     }
   },
-  "last_updated": "2026-11-27T07:41:19.587224",
+  "last_updated": "2026-11-27T14:51:23.407813",
   "copyright_blocked_ids": {
     "lz_168036": {
       "title": "被羞辱当天，我收回他的一切",
       "reason": "Chặn vùng lãnh thổ do bản quyền YouTube Content ID (số quốc gia bị chặn: 249, chặn tại VN: True)",
       "blocked_at": "2026-11-26T04:48:51.389983"
-    },
-    "test_package": {
-      "title": "test_package",
-      "reason": "blocked_worldwide_by_kuaikan",
-      "blocked_at": "2026-11-26T19:20:34.111501"
     }
   }
 }

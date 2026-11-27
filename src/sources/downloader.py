@@ -403,7 +403,7 @@ class Downloader:
         """
         Tải một luồng stream m3u8 thành file mp4 bằng cơ chế tải phân đoạn song song qua requests.Session,
         hỗ trợ tải nối tiếp (resume), ghi file nguyên tử (.ts.part -> .ts), chống dính Keep-Alive,
-        tự động đổi mạch Tor qua ControlPort 9051 (tối đa 15 mạch, timeout 900s, 4 threads, jitter delay 0.10s-0.18s),
+        tự động đổi mạch Tor qua ControlPort 9051 (tối đa 15 mạch, trần 1800s + tự gia hạn +300s khi tiến độ >= 85% & tốc độ > 250 KB/s),
         và ghép nối siêu tốc bằng FFmpeg.
         """
         t0 = time.time()
@@ -428,9 +428,32 @@ class Downloader:
 
         # Cấu hình chống rate-limit & xoay vòng
         max_circuits = 15
-        overall_deadline = time.time() + 1200.0  # Tổng timeout 1200s (20 phút)
+        base_timeout_sec = 1800.0   # Trần tải tổng cơ sở 1800s (30 phút)
+        extension_sec = 300.0       # Gia hạn thông minh tối đa +300s (5 phút)
+        extension_used = False
+        overall_deadline = t0 + base_timeout_sec
+        last_speed_kb_s = 0.0
+
+        def _maybe_extend_deadline(now_ts: float, done_count: int, speed_kb_s: float) -> bool:
+            nonlocal overall_deadline, extension_used
+            if extension_used or done_count >= total_segments:
+                return False
+            if now_ts < (overall_deadline - 10.0):
+                return False
+            progress_ratio = done_count / max(total_segments, 1)
+            if progress_ratio >= 0.85 and speed_kb_s > 250.0:
+                extension_used = True
+                overall_deadline += extension_sec
+                print(
+                    f"[Downloader] ⏱️ Gia hạn thông minh +{int(extension_sec)}s "
+                    f"(tiến độ {progress_ratio*100:.1f}% >= 85%, tốc độ {speed_kb_s:.1f} KB/s > 250 KB/s) "
+                    f"để hoàn tất {total_segments - done_count} mảnh cuối..."
+                )
+                return True
+            return False
+
         proxy_desc = f"qua Tor ({base_proxy})" if base_proxy else "trực tiếp (không proxy)"
-        print(f"[Downloader] 🚀 Khởi chạy tải phân đoạn an toàn ({total_segments} mảnh) {proxy_desc} [Max 15 mạch Tor | 4 threads | 1200s timeout]...")
+        print(f"[Downloader] 🚀 Khởi chạy tải phân đoạn an toàn ({total_segments} mảnh) {proxy_desc} [Max 15 mạch Tor | 4 threads | 1800s timeout (+300s gia hạn)]...")
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0",
@@ -441,12 +464,10 @@ class Downloader:
             headers["Referer"] = "https://ffzy1.tv/"
 
         downloaded_files: Dict[int, Path] = {}
+        circuits_run = 0
 
         for circuit_attempt in range(1, max_circuits + 1):
-            if time.time() >= overall_deadline:
-                print(f"[Downloader] ⚠️ Đã chạm trần thời gian tối đa cho phép (1200s).")
-                break
-
+            circuits_run = circuit_attempt
             # Quét kiểm tra các file .ts hợp lệ đã có trong thư mục tạm (Resume)
             downloaded_files = {}
             for s in segments:
@@ -456,6 +477,13 @@ class Downloader:
 
             if len(downloaded_files) == total_segments:
                 print(f"[Downloader] 🎯 Đã có đủ 100% ({total_segments}/{total_segments}) phân đoạn hợp lệ.")
+                break
+
+            now_outer = time.time()
+            _maybe_extend_deadline(now_outer, len(downloaded_files), last_speed_kb_s)
+            if time.time() >= overall_deadline:
+                total_limit = int(base_timeout_sec + (extension_sec if extension_used else 0))
+                print(f"[Downloader] ⚠️ Đã chạm trần thời gian tối đa cho phép ({total_limit}s).")
                 break
 
             # Nếu từ mạch 2 trở đi: Kích hoạt đổi IP Tor mới (reload_tor_circuit chờ 4s)
@@ -553,13 +581,14 @@ class Downloader:
 
                         now = time.time()
                         elapsed = now - t_circuit_start
+                        current_speed_kb_s = (circuit_downloaded_bytes / 1024.0) / max(elapsed, 0.01)
+                        last_speed_kb_s = current_speed_kb_s
 
                         # Log tiến độ định kỳ mỗi 5s hoặc khi hoàn tất toàn bộ
                         if now - last_log_time >= 5.0 or len(downloaded_files) == total_segments:
                             last_log_time = now
-                            speed_kb_s = (circuit_downloaded_bytes / 1024) / max(elapsed, 0.01)
                             pct = int((len(downloaded_files) / total_segments) * 100)
-                            print(f"[Downloader] ⏳ Tiến độ: {len(downloaded_files)}/{total_segments} mảnh ({pct}%) | Mạch #{circuit_attempt}: +{circuit_downloaded_count} mảnh ({speed_kb_s:.1f} KB/s) | Lỗi: {failed_count}")
+                            print(f"[Downloader] ⏳ Tiến độ: {len(downloaded_files)}/{total_segments} mảnh ({pct}%) | Mạch #{circuit_attempt}: +{circuit_downloaded_count} mảnh ({current_speed_kb_s:.1f} KB/s) | Lỗi: {failed_count}")
 
                         # Phát hiện CDN rate-limit qua chuỗi lỗi liên tiếp (>= 8 lỗi liên tiếp)
                         if consecutive_fails >= 8:
@@ -571,16 +600,17 @@ class Downloader:
 
                         # Giám sát tốc độ & lỗi sau 15s đầu của mạch
                         if elapsed >= 15.0 and len(downloaded_files) < total_segments:
-                            speed_kb_s = (circuit_downloaded_bytes / 1024) / elapsed
-                            if (speed_kb_s < 100.0 and circuit_downloaded_count < 3) or (failed_count >= 10 and failed_count > circuit_downloaded_count * 2):
-                                print(f"[Downloader] ⚠️ Mạch Tor #{circuit_attempt} chậm ({speed_kb_s:.1f} KB/s) hoặc nhiều lỗi ({failed_count} lỗi / {circuit_downloaded_count} thành công) -> Hủy mạch, đổi IP Tor mới...")
+                            if (current_speed_kb_s < 100.0 and circuit_downloaded_count < 3) or (failed_count >= 10 and failed_count > circuit_downloaded_count * 2):
+                                print(f"[Downloader] ⚠️ Mạch Tor #{circuit_attempt} chậm ({current_speed_kb_s:.1f} KB/s) hoặc nhiều lỗi ({failed_count} lỗi / {circuit_downloaded_count} thành công) -> Hủy mạch, đổi IP Tor mới...")
                                 abort_event.set()
                                 for f in futures:
                                     f.cancel()
                                 break
 
+                        _maybe_extend_deadline(now, len(downloaded_files), current_speed_kb_s)
                         if time.time() >= overall_deadline:
-                            print("[Downloader] ⚠️ Chạm trần thời gian tối đa 1200s. Hủy mạch...")
+                            total_limit = int(base_timeout_sec + (extension_sec if extension_used else 0))
+                            print(f"[Downloader] ⚠️ Chạm trần thời gian tối đa {total_limit}s. Hủy mạch...")
                             abort_event.set()
                             for f in futures:
                                 f.cancel()
@@ -635,7 +665,7 @@ class Downloader:
                 shutil.rmtree(seg_dir, ignore_errors=True)
                 return False
         else:
-            print(f"[Downloader] ❌ Thất bại: Chỉ tải được {len(downloaded_files)}/{total_segments} phân đoạn sau {max_circuits} mạch Tor.")
+            print(f"[Downloader] ❌ Thất bại: Chỉ tải được {len(downloaded_files)}/{total_segments} phân đoạn sau {circuits_run} mạch Tor.")
             shutil.rmtree(seg_dir, ignore_errors=True)
             return False
 

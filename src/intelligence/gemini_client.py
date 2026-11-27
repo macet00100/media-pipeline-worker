@@ -15,6 +15,12 @@ from config.settings import Settings
 from google import genai
 from google.genai import types
 
+
+class GeminiAuthError(RuntimeError):
+    """Lỗi xác thực hoặc hết hiệu lực Gemini API Key (401/403/Invalid Key)."""
+    pass
+
+
 class GeminiClient:
     """
     Trình kết nối Gemini API trung tâm hỗ trợ:
@@ -28,6 +34,58 @@ class GeminiClient:
     _cached_client: Optional[genai.Client] = None
     _cached_model: Optional[str] = None
 
+    @staticmethod
+    def is_auth_error(err: Any) -> bool:
+        """Kiểm tra lỗi trả về có phải lỗi xác thực / phân quyền API key (401/403) hay không."""
+        if isinstance(err, GeminiAuthError):
+            return True
+        msg = str(err or "").lower()
+        auth_indicators = (
+            "401",
+            "403",
+            "unauthenticated",
+            "permission_denied",
+            "api key not valid",
+            "api_key_invalid",
+            "access_token_type_unsupported",
+            "invalid api key",
+            "api key expired",
+            "chưa cấu hình gemini_api_key",
+        )
+        return any(tok in msg for tok in auth_indicators)
+
+    @classmethod
+    def is_gemini_auth_exception(cls, err: Any) -> bool:
+        """Nhận diện chắc chắn lỗi xác thực thuộc về Gemini API (tránh nhầm với HTTP 403 của CDN phim)."""
+        if isinstance(err, GeminiAuthError):
+            return True
+        msg = str(err or "").lower()
+        strong_markers = (
+            "api key not valid",
+            "api_key_invalid",
+            "access_token_type_unsupported",
+            "generativelanguage.googleapis.com",
+            "chưa cấu hình gemini_api_key",
+            "lỗi xác thực gemini api key",
+            "kết nối bất kỳ model gemini",
+        )
+        if any(m in msg for m in strong_markers):
+            return True
+        if cls.is_auth_error(msg) and ("gemini" in msg or "api key" in msg or "google" in msg):
+            return True
+        return False
+
+    @classmethod
+    def verify_api_key_preflight(cls) -> Tuple[bool, str]:
+        """
+        Kiểm tra nhanh kết nối Gemini API Key ngay lúc khởi động (Fail-Fast).
+        Trả về (True, working_model) nếu hợp lệ; ném GeminiAuthError nếu toàn bộ keys lỗi xác thực.
+        """
+        cls._cached_client = None
+        cls._cached_model = None
+        _, working_model = cls.get_client_and_model()
+        return True, working_model
+
     @classmethod
     def get_client_and_model(cls) -> Tuple[genai.Client, str]:
         """Khởi tạo client và tự động dò model Flash hoạt động thực tế."""
@@ -36,9 +94,13 @@ class GeminiClient:
 
         api_keys = Settings.GEMINI_API_KEYS
         if not api_keys:
-            raise RuntimeError("LỖI: Chưa cấu hình GEMINI_API_KEY trong .env! Vui lòng cấu hình key hợp lệ.")
+            env_keys = os.getenv("GEMINI_API_KEYS") or os.getenv("GEMINI_API_KEY") or ""
+            api_keys = [k.strip() for k in env_keys.split(",") if k.strip()]
+        if not api_keys:
+            raise GeminiAuthError("LỖI: Chưa cấu hình GEMINI_API_KEY trong .env! Vui lòng cấu hình key hợp lệ.")
 
         last_error = None
+        saw_non_auth_error = False
         for key_idx, key in enumerate(api_keys):
             key = key.strip()
             if not key:
@@ -81,6 +143,10 @@ class GeminiClient:
                         err_msg = str(e_cand).lower()
                         print(f"[GeminiClient] Thử model {cand} chưa thành công: {err_msg[:80]}...")
                         last_error = e_cand
+                        if cls.is_auth_error(e_cand):
+                            # Key lỗi 401/403 -> Fail-fast sang key kế tiếp ngay lập tức
+                            break
+                        saw_non_auth_error = True
                         continue
 
                 if working_model:
@@ -94,7 +160,11 @@ class GeminiClient:
 
             except Exception as e_key:
                 last_error = e_key
+                if not cls.is_auth_error(e_key):
+                    saw_non_auth_error = True
 
+        if last_error is not None and cls.is_auth_error(last_error) and not saw_non_auth_error:
+            raise GeminiAuthError(f"LỖI XÁC THỰC GEMINI API KEY: Toàn bộ API key đều bị từ chối ({last_error})")
         raise RuntimeError(f"LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: {last_error}")
 
     @classmethod
@@ -204,7 +274,14 @@ class GeminiClient:
             )
 
         print(f"[GeminiClient] Đang tải bản nháp video tập {episode_index}/{total_episodes} lên Gemini File API...")
-        uploaded_file = client.files.upload(file=draft_video)
+        try:
+            uploaded_file = client.files.upload(file=draft_video)
+        except Exception as e_up:
+            if cls.is_auth_error(e_up):
+                cls._cached_client = None
+                cls._cached_model = None
+                raise GeminiAuthError(f"LỖI XÁC THỰC GEMINI API KEY khi tải file: {e_up}") from e_up
+            raise
         print(f"[GeminiClient] File ID: {uploaded_file.name}. Đang đợi xử lý...")
 
         try:
@@ -300,6 +377,10 @@ Trả về duy nhất định dạng JSON chuẩn:
                         last_err = e_gen
                         err_str = str(e_gen).lower()
                         print(f"[GeminiClient] Model {m_try} gặp lỗi: {e_gen}")
+                        if cls.is_auth_error(e_gen):
+                            cls._cached_client = None
+                            cls._cached_model = None
+                            raise GeminiAuthError(f"LỖI XÁC THỰC GEMINI API KEY khi gọi model {m_try}: {e_gen}") from e_gen
                         if "503" in err_str or "unavailable" in err_str or "high demand" in err_str:
                             time.sleep(3)
                             continue

@@ -97,36 +97,6 @@
       "buffer_hours": 6,
       "status": "scheduled",
       "metadata": {}
-    },
-    "2026-11-27 11:30": {
-      "slot_key": "2026-11-27 11:30",
-      "slot_vn": "2026-11-27T11:30:00+07:00",
-      "publish_at_utc": "2026-11-27T04:30:00Z",
-      "scheduled_publish_timestamp": 1795753800,
-      "golden_hour": "11:30",
-      "date": "2026-11-27",
-      "video_id": "被羞辱当天我收回他的一切_20261125_220316",
-      "title": "Review Trọn Bộ Ngày Nhục Nhã, Tôi Thu Hồi Tất Cả | Full Từ Đầu Đến Kết",
-      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/被羞辱当天我收回他的一切_20261125_220316",
-      "allocated_at": "2026-11-26T05:45:37.965754+07:00",
-      "buffer_hours": 6,
-      "status": "scheduled",
-      "metadata": {}
-    },
-    "2026-11-27 17:30": {
-      "slot_key": "2026-11-27 17:30",
-      "slot_vn": "2026-11-27T17:30:00+07:00",
-      "publish_at_utc": "2026-11-27T10:30:00Z",
-      "scheduled_publish_timestamp": 1795775400,
-      "golden_hour": "17:30",
-      "date": "2026-11-27",
-      "video_id": "被羞辱当天我收回他的一切_20261126_040604",
-      "title": "Review Trọn Bộ Ngày Nhục Nhã, Tôi Thu Hồi Tất Cả | Full Từ Đầu Đến Kết",
-      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/被羞辱当天我收回他的一切_20261126_040604",
-      "allocated_at": "2026-11-26T11:46:31.597509+07:00",
-      "buffer_hours": 6,
-      "status": "scheduled",
-      "metadata": {}
     }
   },
   "scheduled_videos": [
@@ -219,37 +189,7 @@
       "buffer_hours": 6,
       "status": "scheduled",
       "metadata": {}
-    },
-    {
-      "slot_key": "2026-11-27 11:30",
-      "slot_vn": "2026-11-27T11:30:00+07:00",
-      "publish_at_utc": "2026-11-27T04:30:00Z",
-      "scheduled_publish_timestamp": 1795753800,
-      "golden_hour": "11:30",
-      "date": "2026-11-27",
-      "video_id": "被羞辱当天我收回他的一切_20261125_220316",
-      "title": "Review Trọn Bộ Ngày Nhục Nhã, Tôi Thu Hồi Tất Cả | Full Từ Đầu Đến Kết",
-      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/被羞辱当天我收回他的一切_20261125_220316",
-      "allocated_at": "2026-11-26T05:45:37.965754+07:00",
-      "buffer_hours": 6,
-      "status": "scheduled",
-      "metadata": {}
-    },
-    {
-      "slot_key": "2026-11-27 17:30",
-      "slot_vn": "2026-11-27T17:30:00+07:00",
-      "publish_at_utc": "2026-11-27T10:30:00Z",
-      "scheduled_publish_timestamp": 1795775400,
-      "golden_hour": "17:30",
-      "date": "2026-11-27",
-      "video_id": "被羞辱当天我收回他的一切_20261126_040604",
-      "title": "Review Trọn Bộ Ngày Nhục Nhã, Tôi Thu Hồi Tất Cả | Full Từ Đầu Đến Kết",
-      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/被羞辱当天我收回他的一切_20261126_040604",
-      "allocated_at": "2026-11-26T11:46:31.597509+07:00",
-      "buffer_hours": 6,
-      "status": "scheduled",
-      "metadata": {}
     }
   ],
-  "last_updated": "2026-11-26T11:46:31.597872+07:00"
+  "last_updated": "2026-11-27T14:51:23.407813"
 }
