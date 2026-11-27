@@ -178,8 +178,102 @@
         "total_score": 75,
         "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
       }
+    },
+    {
+      "id": "lz_168025",
+      "vod_id": "168025",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "灵气种田：我家生鲜全网抢断货第二季",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/951a5a6401378e22c41ab78fddba3ad0.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15576_57082fef/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-27T04:09:15.862245"
+    },
+    {
+      "id": "lz_168024",
+      "vod_id": "168024",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "长公主逼我入赘，我成了摄政王",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/64a81087cde8bff0e703489e9f0714db.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15577_3a6f58e0/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-27T04:09:15.862245"
+    },
+    {
+      "id": "ff_100473",
+      "vod_id": "100473",
+      "source_id": "ff",
+      "source_name": "Phi Phàm (FFZY)",
+      "title": "这里是火星",
+      "category": "long_series",
+      "episodes_count": 14,
+      "total_episodes": 14,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 76,
+      "curation_details": {
+        "hook_score": 25,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 15,
+        "total_score": 76,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [真相], độ trọn vẹn 14 tập (Đã Full), nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://pic.feifeixiang.com/upload/vod/20261120-1/a2c447400760463bcc9060c8c50f7824.jpg",
+      "m3u8_groups": [
+        "https://super.ffzy-online6.com/20261120/46085_c3661532/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46086_83d5aac4/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46087_67eed99b/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46088_7ee9f617/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46089_ff8d9fee/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46090_08a3025f/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46091_8a0d997c/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46092_0bcf6836/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46093_b9c9d8a1/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46094_91aa9457/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46095_df0d340e/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46096_8120c3da/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46097_cd24c3ca/index.m3u8",
+        "https://super.ffzy-online6.com/20261120/46098_59ff461e/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-27T04:09:15.862245"
     }
   ],
-  "total_items": 6,
-  "last_updated": "2026-11-26T22:54:07.287904"
+  "total_items": 9,
+  "last_updated": "2026-11-27T04:50:20.484283"
 }
