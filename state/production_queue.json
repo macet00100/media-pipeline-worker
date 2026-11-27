@@ -272,8 +272,108 @@
       ],
       "status": "failed",
       "queued_at": "2026-11-27T04:09:15.862245"
+    },
+    {
+      "id": "lz_168023",
+      "vod_id": "168023",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "此爱难两清",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/2287cfcf417dff088863af6552405c54.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15573_952cf25b/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-27T07:12:04.772724"
+    },
+    {
+      "id": "lz_168022",
+      "vod_id": "168022",
+      "source_id": "lz",
+      "source_name": "Lượng Tử (Quantum)",
+      "title": "冒牌天师",
+      "category": "short_drama",
+      "episodes_count": 1,
+      "total_episodes": 1,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 75,
+      "curation_details": {
+        "hook_score": 22,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 14,
+        "total_score": 75,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [xung đột cao], độ trọn vẹn 1 tập (Đã Full) [Đoản kịch gọn ưu tiên], nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://p.lzp261118.com/upload/vod/20261125-1/445d623ae3fad27d2db98e2f126e97ed.jpg",
+      "m3u8_groups": [
+        "https://lzv34.com/20261123/15574_fb9f25cc/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-27T07:12:04.772724"
+    },
+    {
+      "id": "ff_100582",
+      "vod_id": "100582",
+      "source_id": "ff",
+      "source_name": "Phi Phàm (FFZY)",
+      "title": "神手皇子",
+      "category": "long_series",
+      "episodes_count": 20,
+      "total_episodes": 20,
+      "is_completed": true,
+      "completion_verified": true,
+      "score": 79,
+      "curation_details": {
+        "hook_score": 28,
+        "viral_score": 16,
+        "completeness_score": 20,
+        "copyright_score": 15,
+        "total_score": 79,
+        "reasoning": "Phim có đề tài viral [hấp dẫn], yếu tố hook kịch tính [杀害, 真相], độ trọn vẹn 20 tập (Đã Full), nguyên bản và an toàn bản quyền."
+      },
+      "poster_url": "https://pic.feifeixiang.com/upload/vod/20261127-1/f64aa2eda964c5bcb44537045368aeed.jpg",
+      "m3u8_groups": [
+        "https://super.ffzy-online6.com/20261127/46638_c5c8f541/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46639_44b0e2d8/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46640_456c82b2/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46641_283d428f/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46642_439e5d78/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46643_6dcca2f7/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46644_bb7272ea/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46645_baf4c554/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46646_83dc5dd3/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46647_5bb0b4dd/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46648_00673020/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46649_ee3b82c0/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46650_46a9b6b8/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46651_0a27d42a/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46652_a46f93fa/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46653_45050a29/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46654_70607e3a/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46655_b5c4def0/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46656_2f3a4742/index.m3u8",
+        "https://super.ffzy-online6.com/20261127/46657_ead6ffd8/index.m3u8"
+      ],
+      "status": "failed",
+      "queued_at": "2026-11-27T07:12:04.772724"
     }
   ],
-  "total_items": 9,
-  "last_updated": "2026-11-27T04:50:20.484283"
+  "total_items": 12,
+  "last_updated": "2026-11-27T07:41:19.588156"
 }

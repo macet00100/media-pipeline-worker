@@ -200,6 +200,21 @@
       "title": "这里是火星",
       "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
       "failed_at": "2026-11-27T04:50:20.483555"
+    },
+    "lz_168023": {
+      "title": "此爱难两清",
+      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
+      "failed_at": "2026-11-27T07:25:28.838374"
+    },
+    "lz_168022": {
+      "title": "冒牌天师",
+      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
+      "failed_at": "2026-11-27T07:39:05.622055"
+    },
+    "ff_100582": {
+      "title": "神手皇子",
+      "reason": "LỖI: Không thể kết nối bất kỳ model Gemini Flash nào! Chi tiết lỗi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'UNAUTHENTICATED', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'ACCESS_TOKEN_TYPE_UNSUPPORTED', 'metadata': {'method': 'google.ai.generativelanguage.v1beta.GenerativeService.GenerateContent', 'service': 'generativelanguage.googleapis.com'}}]}}",
+      "failed_at": "2026-11-27T07:41:19.587171"
     }
   },
   "pending_review": {
@@ -269,7 +284,7 @@
       "completed_at": "2026-11-25T11:36:34.679007"
     }
   },
-  "last_updated": "2026-11-27T04:50:20.483591",
+  "last_updated": "2026-11-27T07:41:19.587224",
   "copyright_blocked_ids": {
     "lz_168036": {
       "title": "被羞辱当天，我收回他的一切",
