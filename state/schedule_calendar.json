@@ -97,6 +97,21 @@
       "buffer_hours": 6,
       "status": "scheduled",
       "metadata": {}
+    },
+    "2026-11-29 11:30": {
+      "slot_key": "2026-11-29 11:30",
+      "slot_vn": "2026-11-29T11:30:00+07:00",
+      "publish_at_utc": "2026-11-29T04:30:00Z",
+      "scheduled_publish_timestamp": 1795926600,
+      "golden_hour": "11:30",
+      "date": "2026-11-29",
+      "video_id": "lz_168026",
+      "title": "Review Trọn Bộ Tiệm May Của Cương Tử | Full Từ Đầu Đến Kết",
+      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/刚子裁缝铺_20261128_072142",
+      "allocated_at": "2026-11-28T14:32:15.663480+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
     }
   },
   "scheduled_videos": [
@@ -189,7 +204,22 @@
       "buffer_hours": 6,
       "status": "scheduled",
       "metadata": {}
+    },
+    {
+      "slot_key": "2026-11-29 11:30",
+      "slot_vn": "2026-11-29T11:30:00+07:00",
+      "publish_at_utc": "2026-11-29T04:30:00Z",
+      "scheduled_publish_timestamp": 1795926600,
+      "golden_hour": "11:30",
+      "date": "2026-11-29",
+      "video_id": "lz_168026",
+      "title": "Review Trọn Bộ Tiệm May Của Cương Tử | Full Từ Đầu Đến Kết",
+      "package_dir": "/home/runner/work/media-pipeline-worker/media-pipeline-worker/output/刚子裁缝铺_20261128_072142",
+      "allocated_at": "2026-11-28T14:32:15.663480+07:00",
+      "buffer_hours": 6,
+      "status": "scheduled",
+      "metadata": {}
     }
   ],
-  "last_updated": "2026-11-27T14:51:23.407813"
+  "last_updated": "2026-11-28T14:32:15.663752+07:00"
 }

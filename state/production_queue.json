@@ -18,7 +18,7 @@
       "synopsis": "",
       "director": "",
       "actors": "",
-      "status": "queued",
+      "status": "processed",
       "score": 75,
       "score_breakdown": {
         "hook_score": 22,
@@ -375,5 +375,5 @@
     }
   ],
   "total_items": 12,
-  "last_updated": "2026-11-27T14:51:23.407813"
+  "last_updated": "2026-11-28T07:40:40.402155"
 }
